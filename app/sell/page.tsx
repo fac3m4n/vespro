@@ -31,9 +31,9 @@ import { parseCsv, toMatrix } from "@/lib/csv";
 import { record } from "@/lib/evidence";
 import { avaxToWei } from "@/lib/price";
 import {
-  connectSwarm,
   downloadFromSwarm,
   restoreSwarm,
+  SWARM_SLOT_ID,
   onSwarmStatus,
   uploadToSwarm,
   type SwarmStatus,
@@ -288,14 +288,15 @@ export default function SellPage() {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
-          {swarm?.canUpload ? (
-            <SwarmStorageBar />
-          ) : (
-            <Button size="sm" onClick={() => void connectSwarm()}>
-              Connect Swarm ID
-            </Button>
-          )}
+        <CardContent className="space-y-3">
+          {/* Swarm ID renders its own connect button in here. Always mounted, because the
+              client looks the slot up by id when it initialises — and sized explicitly,
+              because it stretches its iframe to 100% of whatever this element is. */}
+          <div
+            id={SWARM_SLOT_ID}
+            className={swarm?.connected ? "hidden" : "h-11 w-[260px] overflow-hidden rounded-md"}
+          />
+          {swarm?.canUpload && <SwarmStorageBar />}
         </CardContent>
       </Card>
 

@@ -75,6 +75,8 @@ export function swarmStatus(): SwarmStatus {
  * fixed-position widget iframe, so the visible symptom was two Swarm connect buttons
  * stacked in the corner of the page.
  */
+export const SWARM_SLOT_ID = "swarm-id-slot";
+
 export function initSwarm(): Promise<SwarmIdClient> {
   ready ??= createClient();
   return ready;
@@ -90,12 +92,25 @@ async function createClient(): Promise<SwarmIdClient> {
     // loads, which crashes the production prerender of any page that imports this file.
     const { SwarmIdClient } = await import("@snaha/swarm-id");
 
+    /**
+     * Mount Swarm's own widget inside our card rather than letting it float.
+     *
+     * Without a container it pins itself bottom-right, which meant the page showed two
+     * ways to connect: ours and theirs. Theirs is the one that owns the auth UI, so it
+     * wins and our button goes away.
+     *
+     * Checked rather than assumed: the library throws if the element is missing, and
+     * falling back to the floating widget is much better than failing to initialise.
+     */
+    const slot = document.getElementById(SWARM_SLOT_ID) ? SWARM_SLOT_ID : undefined;
+
     const created = new SwarmIdClient({
       iframeOrigin: IFRAME_ORIGIN,
       metadata: {
         name: "Vespro",
         description: "Licence your wearable data for training without giving up the rows",
       },
+      containerId: slot,
       onConnectionChange: publish,
     });
 
