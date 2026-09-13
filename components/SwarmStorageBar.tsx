@@ -34,7 +34,10 @@ export function SwarmStorageBar() {
   if (error) return <p className="text-sm text-muted-foreground">Storage unavailable: {error}</p>;
   if (!storage) return <p className="text-sm text-muted-foreground">Reading postage batch…</p>;
 
-  const used = Math.round(storage.usedFraction * 100);
+  const pct = storage.usedFraction * 100;
+  // A few KB against a 32 GiB batch rounds to 0%, which reads as "nothing was stored".
+  // Enough precision to show that something landed.
+  const used = pct > 0 && pct < 0.01 ? "<0.01" : pct.toFixed(pct < 1 ? 2 : 0);
 
   return (
     <div className="space-y-2">
@@ -42,24 +45,34 @@ export function SwarmStorageBar() {
         <span className="flex items-center gap-2 text-muted-foreground">
           <HardDrive className="size-3.5" />
           <span className="font-mono">{storage.label}</span>
+          <span className="text-xs">depth {storage.depth}</span>
           {storage.immutable && <span className="text-xs">immutable</span>}
         </span>
         <span>
           <span className="font-medium">{formatBytes(storage.remainingBytes)}</span>
-          <span className="text-muted-foreground"> free of {formatBytes(storage.capacityBytes)}</span>
+          <span className="text-muted-foreground">
+            {" "}
+            of {formatBytes(storage.capacityBytes)} theoretical
+          </span>
         </span>
       </div>
 
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full transition-all ${used > 90 ? "bg-destructive" : "bg-success"}`}
-          style={{ width: `${Math.max(1, used)}%` }}
+          className={`h-full transition-all ${pct > 90 ? "bg-destructive" : "bg-success"}`}
+          style={{ width: `${Math.max(1, Math.round(pct))}%` }}
         />
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {used}% used · expires in {formatTtl(storage.ttlSeconds)}
+        {used}% used · {storage.bucketsUsed}/{storage.bucketCount} buckets · expires in{" "}
+        {formatTtl(storage.ttlSeconds)}
         {storage.usable ? "" : " · batch not usable yet"}
+      </p>
+
+      <p className="text-xs text-muted-foreground">
+        Theoretical because chunks land in buckets by hash — a batch stops accepting uploads
+        when any one bucket fills, which happens before the nominal figure.
       </p>
     </div>
   );

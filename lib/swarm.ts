@@ -127,8 +127,18 @@ async function createClient(): Promise<SwarmIdClient> {
 export type SwarmStorage = {
   label: string;
   usedFraction: number;
+  /**
+   * 2^depth chunks of 4 KiB. This is the *theoretical* ceiling — chunks are assigned to
+   * buckets by hash, so in practice a batch stops accepting uploads once any single bucket
+   * fills, which happens well before the nominal figure. Labelled as such in the UI rather
+   * than presented as guaranteed space.
+   */
   capacityBytes: number;
   remainingBytes: number;
+  /** Reported directly by the batch: how full the fullest bucket is, and out of how many. */
+  bucketsUsed: number;
+  bucketCount: number;
+  depth: number;
   /** Seconds until the batch expires and Swarm stops keeping the chunks. */
   ttlSeconds: number | null;
   immutable: boolean;
@@ -159,6 +169,9 @@ export async function swarmStorage(): Promise<SwarmStorage | null> {
     usedFraction,
     capacityBytes,
     remainingBytes: Math.max(0, Math.round(capacityBytes * (1 - usedFraction))),
+    bucketsUsed: batch.utilization,
+    bucketCount: buckets,
+    depth: batch.depth,
     ttlSeconds: batch.batchTTL ?? null,
     immutable: batch.immutableFlag,
     usable: batch.usable,

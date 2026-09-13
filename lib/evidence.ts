@@ -31,7 +31,15 @@ export type Evidence = {
 const STORAGE_KEY = "vespro:evidence";
 const ARKIV_EXPLORER = "https://tiramisu.explorer.arkiv.network";
 const FUJI_EXPLORER = "https://testnet.snowtrace.io";
-const SWARM_GATEWAY = "https://download.gateway.ethswarm.org/bzz";
+/**
+ * `/bytes`, not `/bzz`.
+ *
+ * Datasets are uploaded with `uploadData()`, which stores raw bytes. `/bzz` resolves a
+ * manifest and answers 308 for a plain byte reference, so it looked like the upload had
+ * failed when the data was there all along. `/bytes` returns the ciphertext directly —
+ * which is the point of showing the link: anyone can fetch it and get nothing but noise.
+ */
+const SWARM_GATEWAY = "https://download.gateway.ethswarm.org/bytes";
 
 let entries: Evidence[] = [];
 const listeners = new Set<(entries: Evidence[]) => void>();
