@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "node scripts/check-network.mjs"
+    "check": "node scripts/check-network.mjs",
+    "e2e": "node scripts/e2e-expiry.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",

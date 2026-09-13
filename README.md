@@ -74,7 +74,7 @@ rendered query text, so "Arkiv is doing the work" is checkable rather than claim
 
 ```
 kind = "listing" AND domain = "fitness" AND metric = "heart_rate"
-  AND rowCount >= 500 AND pricePerDayWei <= 5000000000000000
+  AND row_count >= 500 AND price_per_day_wei <= 5000000000000000
 ```
 
 **Expiry is the product.** A grant is created with `ExpirationTime.fromSeconds(term)`

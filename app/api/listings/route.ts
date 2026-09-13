@@ -33,16 +33,16 @@ export async function POST(request: Request) {
     return Response.json(
       await createListing(
         {
-          listingId: body.listingId,
+          listing_id: body.listing_id,
           domain: body.domain,
           metric: body.metric,
-          rowCount: Number(body.rowCount),
-          pricePerDayWei: BigInt(body.pricePerDayWei),
+          row_count: Number(body.row_count),
+          price_per_day_wei: BigInt(body.price_per_day_wei),
           region: body.region,
-          schemaHash: body.schemaHash,
+          schema_hash: body.schema_hash,
         },
         {
-          listingId: body.listingId,
+          listing_id: body.listing_id,
           swarmHash: body.swarmHash,
           sampleSwarmHash: body.sampleSwarmHash ?? null,
           columns: body.columns ?? [],

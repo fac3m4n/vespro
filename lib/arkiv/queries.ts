@@ -25,10 +25,10 @@ export function browseListings(filters: BrowseFilters) {
   if (filters.metric) terms.push(eq("metric", str(filters.metric)));
   if (filters.region) terms.push(eq("region", str(filters.region)));
   if (filters.minRows !== undefined) {
-    terms.push(gte("rowCount", i32(filters.minRows)));
+    terms.push(gte("row_count", i32(filters.minRows)));
   }
   if (filters.maxPricePerDayWei !== undefined) {
-    terms.push(lte("pricePerDayWei", u64(filters.maxPricePerDayWei)));
+    terms.push(lte("price_per_day_wei", u64(filters.maxPricePerDayWei)));
   }
 
   return and(...terms);
@@ -41,10 +41,10 @@ export function browseListings(filters: BrowseFilters) {
  * cases are indistinguishable here and that is the design: absence is the signal, so
  * there is nothing to check a flag against and no expiry arithmetic to get wrong.
  */
-export function liveGrant(listingId: string, buyer: `0x${string}`) {
+export function liveGrant(listing_id: string, buyer: `0x${string}`) {
   return and(
     eq("kind", str(KIND_GRANT)),
-    eq("listingId", str(listingId)),
+    eq("listing_id", str(listing_id)),
     eq("buyer", addr(buyer)),
   );
 }

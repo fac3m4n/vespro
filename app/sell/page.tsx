@@ -9,7 +9,7 @@ import { trainLogistic, type TrainedModel } from "@/lib/training";
 import { useEntityStream } from "@/lib/useEntityStream";
 import { decryptDataset } from "@/lib/crypto";
 
-type Listing = { key: string; listingId: string; swarmHash: string; rowCount: number };
+type Listing = { key: string; listing_id: string; swarmHash: string; row_count: number };
 type JobLog = { at: string; text: string };
 
 /**
@@ -21,7 +21,7 @@ type JobLog = { at: string; text: string };
  */
 export default function SellPage() {
   const [swarm, setSwarm] = useState<SwarmStatus | null>(null);
-  const [rowCount, setRowCount] = useState(800);
+  const [row_count, setRowCount] = useState(800);
   const [price, setPrice] = useState("2000000000000000");
   const [region, setRegion] = useState("EU");
   const [busy, setBusy] = useState<string | null>(null);
@@ -48,12 +48,12 @@ export default function SellPage() {
         const detail = await fetch(`/api/grants/detail?key=${entityKey}`).then((r) => r.json());
         if (detail.error) return;
 
-        const listingId: string = detail.attributes?.listingId;
-        const stored = localStorage.getItem(`vespro:key:${listingId}`);
-        const meta = localStorage.getItem(`vespro:meta:${listingId}`);
+        const listing_id: string = detail.attributes?.listing_id;
+        const stored = localStorage.getItem(`vespro:key:${listing_id}`);
+        const meta = localStorage.getItem(`vespro:meta:${listing_id}`);
         if (!stored || !meta) return;
 
-        note(`Licence sold for ${listingId} — decrypting locally`);
+        note(`Licence sold for ${listing_id} — decrypting locally`);
 
         const { swarmHash, iv } = JSON.parse(meta);
         const ciphertext = await downloadFromSwarm(swarmHash);
@@ -86,8 +86,8 @@ export default function SellPage() {
   async function publish() {
     setBusy("Generating and encrypting");
     try {
-      const listingId = `fit-${Date.now().toString(36)}`;
-      const rows = generateRows(rowCount);
+      const listing_id = `fit-${Date.now().toString(36)}`;
+      const rows = generateRows(row_count);
       const plaintext = new TextEncoder().encode(toCsv(rows));
 
       const key = await generateDatasetKey();
@@ -97,21 +97,21 @@ export default function SellPage() {
       const swarmHash = await uploadToSwarm(ciphertext);
 
       // The key stays here. This is the whole architecture in one line.
-      localStorage.setItem(`vespro:key:${listingId}`, await exportKey(key));
-      localStorage.setItem(`vespro:meta:${listingId}`, JSON.stringify({ swarmHash, iv }));
+      localStorage.setItem(`vespro:key:${listing_id}`, await exportKey(key));
+      localStorage.setItem(`vespro:meta:${listing_id}`, JSON.stringify({ swarmHash, iv }));
 
       setBusy("Writing the Arkiv listing");
       const response = await fetch("/api/listings", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          listingId,
+          listing_id,
           domain: "fitness",
           metric: "heart_rate",
-          rowCount: rows.length,
-          pricePerDayWei: price,
+          row_count: rows.length,
+          price_per_day_wei: price,
           region,
-          schemaHash: await schemaHash(COLUMNS.map((c) => c.name)),
+          schema_hash: await schemaHash(COLUMNS.map((c) => c.name)),
           swarmHash,
           sampleSwarmHash: null,
           columns: COLUMNS,
@@ -123,10 +123,10 @@ export default function SellPage() {
       if (response.error) throw new Error(response.error);
 
       setListings((current) => [
-        { key: response.entityKey, listingId, swarmHash, rowCount: rows.length },
+        { key: response.entityKey, listing_id, swarmHash, row_count: rows.length },
         ...current,
       ]);
-      note(`Listed ${listingId} — ${(ciphertext.byteLength / 1024).toFixed(1)} KiB of ciphertext on Swarm`);
+      note(`Listed ${listing_id} — ${(ciphertext.byteLength / 1024).toFixed(1)} KiB of ciphertext on Swarm`);
     } catch (error) {
       note(`Publish failed: ${error instanceof Error ? error.message : "unknown"}`);
     } finally {
@@ -170,7 +170,7 @@ export default function SellPage() {
             Rows
             <input
               type="number"
-              value={rowCount}
+              value={row_count}
               onChange={(e) => setRowCount(Number(e.target.value))}
               className="mt-1 w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-100"
             />
@@ -208,7 +208,7 @@ export default function SellPage() {
           <ul className="mt-4 space-y-2 text-xs text-neutral-400">
             {listings.map((listing) => (
               <li key={listing.key} className="rounded border border-neutral-800 p-2 font-mono">
-                {listing.listingId} · {listing.rowCount} rows · swarm:{listing.swarmHash.slice(0, 12)}…
+                {listing.listing_id} · {listing.row_count} rows · swarm:{listing.swarmHash.slice(0, 12)}…
               </li>
             ))}
           </ul>

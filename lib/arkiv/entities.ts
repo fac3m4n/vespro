@@ -46,22 +46,22 @@ export async function createListing(
  * data we store about the grant — it is how long the grant exists.
  */
 export async function createGrant(
-  listingId: string,
+  listing_id: string,
   owner: `0x${string}`,
   option: LicenceOption,
-  settlementTx: string,
+  settlement_tx: string,
   jobSpec: GrantPayload["jobSpec"],
 ): Promise<CreatedEntity & { purchasedSeconds: number }> {
   const client = arkivWriteClient("buyer");
   const buyer = client.account.address;
   const purchasedSeconds = LICENCE_SECONDS[option];
 
-  const payload: GrantPayload = { listingId, purchasedSeconds, jobSpec };
+  const payload: GrantPayload = { listing_id, purchasedSeconds, jobSpec };
 
   const { entityKey, txHash } = await client.createEntity({
     payload: jsonToPayload(payload),
     contentType: "application/json",
-    attributes: grantAttributes({ listingId, buyer, owner, settlementTx }),
+    attributes: grantAttributes({ listing_id, buyer, owner, settlement_tx }),
     expires: ExpirationTime.fromSeconds(purchasedSeconds),
   });
 
@@ -122,13 +122,13 @@ export async function fetchListings(filters: BrowseFilters) {
  * the query no longer returns.
  */
 export async function hasLiveGrant(
-  listingId: string,
+  listing_id: string,
   buyer: `0x${string}`,
 ): Promise<boolean> {
   const client = arkivReadClient();
   const result = await client
     .select({ key: true })
-    .where(liveGrant(listingId, buyer))
+    .where(liveGrant(listing_id, buyer))
     .limit(1)
     .fetch();
   return result.entities.length > 0;

@@ -1,5 +1,10 @@
 # Arkiv data model — Vespro
 
+> **Attribute names are snake_case, and this is not a style preference.** The engine
+> rejects uppercase letters in attribute names — `listingId` reverts with
+> `Ident32InvalidByte(7, 0x49)` — while the SDK's own `isValidAttributeName` accepts
+> it. Do not "tidy" these into camelCase. See finding 1 in `feedback.md`.
+
 Two entity types. The split between **attributes** (queryable) and **payload** (not
 queryable) is the whole design: anything a buyer filters on has to be an attribute,
 or every browse turns into a scan.
@@ -20,17 +25,17 @@ owner stops renewing, the listing drops out of the marketplace on its own.
 | `kind` | string, `"listing"` | Separates the two entity types in every query |
 | `domain` | string, e.g. `"fitness"` | First filter a buyer applies |
 | `metric` | string, e.g. `"heart_rate"` | Narrows to a trainable signal |
-| `rowCount` | number | Range filter — buyers want a minimum |
-| `pricePerDayWei` | number | Range filter — buyers want a maximum |
+| `row_count` | number | Range filter — buyers want a minimum |
+| `price_per_day_wei` | number | Range filter — buyers want a maximum |
 | `region` | string, e.g. `"EU"` | Buyers have jurisdiction constraints |
 | `owner` | address | Owner dashboard queries its own listings |
-| `schemaHash` | string | Buyer checks column compatibility before paying |
+| `schema_hash` | string | Buyer checks column compatibility before paying |
 
 The buyer's browse is a **compound filter**, not single-attribute equality:
 
 ```
 kind = "listing" AND domain = "fitness" AND metric = "heart_rate"
-  AND rowCount >= 500 AND pricePerDayWei <= 2000000000000000
+  AND row_count >= 500 AND price_per_day_wei <= 2000000000000000
 ```
 
 ### Payload (not queryable)
@@ -55,15 +60,15 @@ cron sweep, and no delete call anywhere in this codebase.
 | Attribute | Type | Why it is an attribute |
 |---|---|---|
 | `kind` | string, `"grant"` | — |
-| `listingId` | string | Which dataset this licenses |
+| `listing_id` | string | Which dataset this licenses |
 | `buyer` | address | The access check filters on it |
 | `owner` | address | Powers the owner's live earnings feed |
-| `settlementTx` | string | Fuji transaction that paid for it |
+| `settlement_tx` | string | Fuji transaction that paid for it |
 
 The access check, run before the owner's browser will train anything:
 
 ```
-kind = "grant" AND listingId = <id> AND buyer = <address>
+kind = "grant" AND listing_id = <id> AND buyer = <address>
 ```
 
 Zero rows means no licence. Absence is the signal.

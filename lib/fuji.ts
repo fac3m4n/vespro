@@ -12,8 +12,8 @@ import { privateKeyToAccount } from "viem/accounts";
  */
 
 export const LICENCE_ABI = parseAbi([
-  "function purchase(string listingId, address dataOwner, uint64 seconds_) payable returns (uint256)",
-  "event LicencePurchased(uint256 indexed id, string listingId, address indexed buyer, address indexed dataOwner, uint64 seconds_, uint256 paid)",
+  "function purchase(string listing_id, address dataOwner, uint64 seconds_) payable returns (uint256)",
+  "event LicencePurchased(uint256 indexed id, string listing_id, address indexed buyer, address indexed dataOwner, uint64 seconds_, uint256 paid)",
 ]);
 
 const CONTRACT = process.env.NEXT_PUBLIC_LICENCE_CONTRACT_ADDRESS as
@@ -34,10 +34,10 @@ export function fujiConfigured(): boolean {
 }
 
 export async function settleOnFuji(input: {
-  listingId: string;
+  listing_id: string;
   owner: `0x${string}`;
   seconds: number;
-  pricePerDayWei: bigint;
+  price_per_day_wei: bigint;
 }): Promise<Settlement> {
   if (!fujiConfigured()) {
     return {
@@ -56,13 +56,13 @@ export async function settleOnFuji(input: {
   }).extend(publicActions);
 
   // Pro-rated from the per-day price, so a 60-second licence costs 60 seconds of it.
-  const value = (input.pricePerDayWei * BigInt(input.seconds)) / 86_400n;
+  const value = (input.price_per_day_wei * BigInt(input.seconds)) / 86_400n;
 
   const txHash = await client.writeContract({
     address: CONTRACT!,
     abi: LICENCE_ABI,
     functionName: "purchase",
-    args: [input.listingId, input.owner, BigInt(input.seconds)],
+    args: [input.listing_id, input.owner, BigInt(input.seconds)],
     value,
   });
 

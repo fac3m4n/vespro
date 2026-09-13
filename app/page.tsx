@@ -10,14 +10,14 @@ type Listing = {
   owner: string;
   expiresAt: string;
   attributes: Record<string, string>;
-  payload: { listingId: string; swarmHash: string; description: string; columns: { name: string }[] };
+  payload: { listing_id: string; swarmHash: string; description: string; columns: { name: string }[] };
 };
 
 type AccessCheck = { licensed: boolean; query: string; checkedAt: string };
 
 type Purchase = {
   entityKey: string;
-  listingId: string;
+  listing_id: string;
   purchasedSeconds: number;
   settlement: { settled: boolean; txHash: string; explorerUrl: string | null; note?: string };
   boughtAt: number;
@@ -82,10 +82,10 @@ export default function MarketplacePage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          listingId: listing.payload.listingId,
+          listing_id: listing.payload.listing_id,
           owner: listing.owner,
           option,
-          pricePerDayWei: listing.attributes.pricePerDayWei,
+          price_per_day_wei: listing.attributes.price_per_day_wei,
           jobSpec: { model: "logistic-regression", epochs: 40, learningRate: 0.05 },
         }),
       }).then((r) => r.json());
@@ -94,7 +94,7 @@ export default function MarketplacePage() {
 
       setPurchase({
         entityKey: result.entityKey,
-        listingId: listing.payload.listingId,
+        listing_id: listing.payload.listing_id,
         purchasedSeconds: result.purchasedSeconds,
         settlement: result.settlement,
         boughtAt: Date.now(),
@@ -108,7 +108,7 @@ export default function MarketplacePage() {
 
   async function checkAccess() {
     if (!purchase || !buyer) return;
-    const params = new URLSearchParams({ listingId: purchase.listingId, buyer });
+    const params = new URLSearchParams({ listing_id: purchase.listing_id, buyer });
     setAccess(await fetch(`/api/grants?${params}`).then((r) => r.json()));
   }
 
@@ -192,10 +192,10 @@ export default function MarketplacePage() {
           <article key={listing.key} className="rounded-lg border border-neutral-800 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-sm">{listing.payload.listingId}</p>
+                <p className="font-mono text-sm">{listing.payload.listing_id}</p>
                 <p className="mt-1 text-xs text-neutral-400">{listing.payload.description}</p>
                 <p className="mt-2 text-xs text-neutral-500">
-                  {listing.attributes.rowCount} rows · {listing.attributes.metric} ·{" "}
+                  {listing.attributes.row_count} rows · {listing.attributes.metric} ·{" "}
                   {listing.attributes.region} · expires at block {listing.expiresAt ?? "—"}
                 </p>
                 <p className="mt-1 font-mono text-[11px] text-neutral-600">

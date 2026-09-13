@@ -12,17 +12,17 @@ import { settleOnFuji } from "@/lib/fuji";
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const listingId = params.get("listingId");
+  const listing_id = params.get("listing_id");
   const buyer = params.get("buyer") as `0x${string}` | null;
 
-  if (!listingId || !buyer) {
-    return Response.json({ error: "listingId and buyer are required" }, { status: 400 });
+  if (!listing_id || !buyer) {
+    return Response.json({ error: "listing_id and buyer are required" }, { status: 400 });
   }
 
   try {
     return Response.json({
-      licensed: await hasLiveGrant(listingId, buyer),
-      query: explain(liveGrant(listingId, buyer)),
+      licensed: await hasLiveGrant(listing_id, buyer),
+      query: explain(liveGrant(listing_id, buyer)),
       checkedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -46,14 +46,14 @@ export async function POST(request: Request) {
     // configured this returns a clearly-labelled unsettled marker rather than
     // pretending a payment happened.
     const settlement = await settleOnFuji({
-      listingId: body.listingId,
+      listing_id: body.listing_id,
       owner: body.owner,
       seconds: LICENCE_SECONDS[option],
-      pricePerDayWei: BigInt(body.pricePerDayWei ?? 0),
+      price_per_day_wei: BigInt(body.price_per_day_wei ?? 0),
     });
 
     const grant = await createGrant(
-      body.listingId,
+      body.listing_id,
       body.owner,
       option,
       settlement.txHash,

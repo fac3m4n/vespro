@@ -22,14 +22,14 @@ export type LicenceOption = keyof typeof LICENCE_SECONDS;
 export const LISTING_LIFETIME_SECONDS = 900;
 
 export type ListingInput = {
-  listingId: string;
+  listing_id: string;
   domain: string;
   metric: string;
-  rowCount: number;
-  pricePerDayWei: bigint;
+  row_count: number;
+  price_per_day_wei: bigint;
   region: string;
   owner: `0x${string}`;
-  schemaHash: string;
+  schema_hash: string;
 };
 
 /**
@@ -44,16 +44,16 @@ export function listingAttributes(input: ListingInput) {
     kind: str(KIND_LISTING),
     domain: str(input.domain),
     metric: str(input.metric),
-    rowCount: i32(input.rowCount),
-    pricePerDayWei: u64(input.pricePerDayWei),
+    row_count: i32(input.row_count),
+    price_per_day_wei: u64(input.price_per_day_wei),
     region: str(input.region),
     owner: addr(input.owner),
-    schemaHash: str(input.schemaHash),
+    schema_hash: str(input.schema_hash),
   };
 }
 
 export type ListingPayload = {
-  listingId: string;
+  listing_id: string;
   swarmHash: string;
   sampleSwarmHash: string | null;
   columns: { name: string; unit: string }[];
@@ -63,10 +63,10 @@ export type ListingPayload = {
 };
 
 export type GrantInput = {
-  listingId: string;
+  listing_id: string;
   buyer: `0x${string}`;
   owner: `0x${string}`;
-  settlementTx: string;
+  settlement_tx: string;
 };
 
 /**
@@ -77,15 +77,15 @@ export type GrantInput = {
 export function grantAttributes(input: GrantInput) {
   return {
     kind: str(KIND_GRANT),
-    listingId: str(input.listingId),
+    listing_id: str(input.listing_id),
     buyer: addr(input.buyer),
     owner: addr(input.owner),
-    settlementTx: str(input.settlementTx),
+    settlement_tx: str(input.settlement_tx),
   };
 }
 
 export type GrantPayload = {
-  listingId: string;
+  listing_id: string;
   purchasedSeconds: number;
   jobSpec: { model: "logistic-regression"; epochs: number; learningRate: number };
 };

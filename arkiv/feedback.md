@@ -8,7 +8,62 @@ while building, with the reproduction where there is one.
 
 ---
 
-## 1. The SDK README publishes a working private key
+## 1. `isValidAttributeName` accepts names the chain rejects
+
+**Severity: highest of anything we hit. It costs a failed transaction to discover,
+and the SDK actively tells you the name is fine first.**
+
+`listing_id` works. `listingId` does not. The SDK's own validator disagrees with the
+chain about which is which.
+
+**Reproduction.** With `@arkiv-network/sdk@0.8.1` against Tiramisu:
+
+```js
+import { isValidAttributeName, validateAttributeName } from "@arkiv-network/sdk/attr";
+
+isValidAttributeName("listingId");  // true
+validateAttributeName("listingId"); // does not throw
+```
+
+Then create an entity with `listingId` as an attribute name and the transaction
+reverts:
+
+```
+EntityMutationError: Transaction failed: an attribute name holds "I" (0x49) at byte 7,
+which is outside the name charset ("A"-"Z", "a"-"z", "0"-"9", ".", "-" and "_",
+with a letter first)
+
+Error: Ident32InvalidByte(uint256 position, bytes1 value)
+                         (7, 0x49)
+Contract Call: address 0x4400000000000000000000000000000000000044
+```
+
+**Two things are wrong here, and the second is the confusing one.**
+
+First, the client-side validator is looser than the contract. `isValidAttributeName`
+and `validateAttributeName` both exist, both are exported, and both green-light a name
+the engine will reject — so the natural defensive check gives false confidence, and
+the real failure arrives as a reverted transaction after you have spent gas.
+
+Second, **the error message contradicts itself.** It reports `"I"` as being *outside* a
+charset that it then describes as including `"A"-"Z"`. Uppercase `I` is plainly within
+`A`–`Z`. So a developer reading the error carefully concludes it cannot be about the
+uppercase letter, and goes looking for an invisible character or an encoding problem
+instead. We lost time to exactly that. Either the contract's real charset is
+lowercase-only and the message is describing the wrong one, or the contract is
+stricter than intended — but as written, the message sends you the wrong way.
+
+**What we would change.** Make `validateAttributeName` enforce whatever the engine
+actually enforces, so the failure is local, free and immediate rather than on-chain
+and paid for. Then fix the message to state the charset that was applied. If
+lowercase-only is intentional, saying "attribute names are lowercase" would be clearer
+than a byte offset and a charset the rejected character belongs to.
+
+**How Vespro works around it.** Every attribute name in `lib/arkiv/schema.ts` is
+snake_case. `arkiv/schema.md` documents it as a constraint so nobody on the team
+reintroduces a camelCase name later.
+
+## 2. The SDK README publishes a working private key
 
 **Severity: worth fixing before more people copy it.**
 
@@ -43,7 +98,7 @@ account: privateKeyToAccount(process.env.ARKIV_PRIVATE_KEY as `0x${string}`),
 We did not use the published key. Vespro generates burners with a CSPRNG, keeps
 them in a gitignored `.env.local`, and refuses to start if they are missing.
 
-## 2. `watchEntityEvents` polls over an http transport and never says so
+## 3. `watchEntityEvents` polls over an http transport and never says so
 
 **Severity: this is the whole of Mission 03, and it is invisible.**
 
@@ -87,7 +142,7 @@ be live when it is literally `"webSocket"`. We never pass `fromBlock`; a gap is
 reconciled with a one-shot `select()` over http instead, which keeps the socket
 doing only what a socket is good at.
 
-## 3. `getEntity` throws for an expired entity
+## 4. `getEntity` throws for an expired entity
 
 **Severity: minor, but it shapes expiry-centric code.**
 
@@ -110,7 +165,7 @@ distinguish "expired" from "never existed", and we say so in our schema. But a
 as a value rather than as a thrown thing. Queries already behave this way, which
 is why `select().limit(1)` ended up being our access check instead.
 
-## 4. Duration helpers reject odd numbers of seconds, at runtime
+## 5. Duration helpers reject odd numbers of seconds, at runtime
 
 **Severity: minor. The strictness is right, the timing is not.**
 
@@ -131,7 +186,7 @@ duration actually resolved to is observable. Documenting durations as approximat
 rather than pretending blocks are a clock is the right call, and it let us show a
 real expiry block in the UI instead of our own guess.
 
-## 5. Docs: stray space in the Tiramisu import, and a version that has moved on
+## 6. Docs: stray space in the Tiramisu import, and a version that has moved on
 
 **Severity: cosmetic, but it is a copy-paste target.**
 
@@ -150,7 +205,7 @@ one more thing to second-guess at 4am. The manual explicitly says your ETHRome
 page wins on disagreements, so this is mostly a note for whoever refreshes the
 README example.
 
-## 6. What worked well enough to be worth saying
+## 7. What worked well enough to be worth saying
 
 Not padding — these are the things that made a 6-hour build possible.
 
@@ -171,7 +226,7 @@ Not padding — these are the things that made a 6-hour build possible.
   actually design an index instead of dumping a document in and hoping. Our
   `arkiv/schema.md` exists because the SDK would not let us avoid the question.
 
-## 7. Where Arkiv earned its place in this app
+## 8. Where Arkiv earned its place in this app
 
 For the record, since "why Arkiv" is the question the bounty asks.
 
