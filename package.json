@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check": "node scripts/check-network.mjs",
-    "e2e": "node scripts/e2e-expiry.mjs"
+    "e2e": "node scripts/e2e-expiry.mjs",
+    "deploy:fuji": "node scripts/deploy-fuji.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",
@@ -25,6 +26,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "solc": "^0.8.28",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

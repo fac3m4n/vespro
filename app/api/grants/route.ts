@@ -47,9 +47,7 @@ export async function POST(request: Request) {
     // pretending a payment happened.
     const settlement = await settleOnFuji({
       listing_id: body.listing_id,
-      owner: body.owner,
       seconds: LICENCE_SECONDS[option],
-      price_per_day_wei: BigInt(body.price_per_day_wei ?? 0),
     });
 
     const grant = await createGrant(

@@ -15,7 +15,7 @@ Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and A
 | **Demo video** | _(link)_ |
 | **Bytes** | Encrypted on [Swarm](https://ethswarm.org) via Swarm ID |
 | **Index and licences** | [Arkiv](https://arkiv.network) on Tiramisu, chain `7738577` |
-| **Settlement** | Avalanche Fuji C-Chain |
+| **Settlement** | Avalanche Fuji C-Chain — [`0x3e4e5bf7…de94b29`](https://testnet.snowtrace.io/address/0x3e4e5bf72803e2d18d313613fa2f16662de94b29) |
 
 ---
 
@@ -115,7 +115,8 @@ A data licence is a financial right with a lifecycle: an asset rule (the term an
 price), an eligibility policy (a grant only exists for the buyer who paid), and
 settlement (payment precedes the licence). `purchase()` is called on Fuji and the
 transaction hash is written into the grant's attributes, so every licence points at
-the payment that created it. Payment happens **before** the grant is written; if
+the payment that created it. Proceeds are **credited, not pushed** — `owed[dataOwner]`
+plus a `withdraw()`, so a purchase never hands control to the recipient mid-transaction. Payment happens **before** the grant is written; if
 settlement isn't configured the app says `settled: false` and labels it, rather than
 minting a licence nobody paid for. Code: [`lib/fuji.ts`](lib/fuji.ts).
 

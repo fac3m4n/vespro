@@ -1,0 +1,524 @@
+[
+  {
+    "inputs": [],
+    "name": "InvalidTerms",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ListingInactive",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoSuchListing",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotDataOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "NotEligible",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NothingOwed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "requested",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "min",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "max",
+        "type": "uint64"
+      }
+    ],
+    "name": "TermOutOfRange",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "sent",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "WrongPayment",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "denied",
+        "type": "bool"
+      }
+    ],
+    "name": "EligibilityChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "licenceId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "dataOwner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "termSeconds",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "paid",
+        "type": "uint256"
+      }
+    ],
+    "name": "LicencePurchased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      }
+    ],
+    "name": "TermsDeactivated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "dataOwner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "pricePerDayWei",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "minSeconds",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "maxSeconds",
+        "type": "uint64"
+      }
+    ],
+    "name": "TermsRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Withdrawn",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "TRANSFERABLE",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      }
+    ],
+    "name": "deactivate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "denied",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "licences",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "dataOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint64",
+        "name": "startedAt",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "termSeconds",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint256",
+        "name": "paid",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextLicenceId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "owed",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint64",
+        "name": "termSeconds",
+        "type": "uint64"
+      }
+    ],
+    "name": "purchase",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "licenceId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint64",
+        "name": "termSeconds",
+        "type": "uint64"
+      }
+    ],
+    "name": "quote",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pricePerDayWei",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "minSeconds",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint64",
+        "name": "maxSeconds",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "schemaCommitment",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registerTerms",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "deny",
+        "type": "bool"
+      }
+    ],
+    "name": "setEligibility",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "listingId",
+        "type": "string"
+      }
+    ],
+    "name": "termsFor",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "dataOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pricePerDayWei",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint64",
+            "name": "minSeconds",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "maxSeconds",
+            "type": "uint64"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "schemaCommitment",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct DataLicence.Terms",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "licenceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "withinTerm",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
