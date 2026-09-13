@@ -3,7 +3,7 @@
 Captured against the deployed app, not a local dev server. Everything below is
 reproducible with `npm run e2e` against your own keys.
 
-Deployment: https://vespro-gv1i10rx1-akerimberdigmailcoms-projects.vercel.app
+Deployment: https://vespro-ten.vercel.app
 Chain: Arkiv Tiramisu testnet (`7738577`) · settlement on Avalanche Fuji C-Chain
 
 ---

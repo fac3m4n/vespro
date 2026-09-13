@@ -11,7 +11,7 @@ Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and A
 
 | | |
 |---|---|
-| **Live demo** | https://vespro-gv1i10rx1-akerimberdigmailcoms-projects.vercel.app |
+| **Live demo** | https://vespro-ten.vercel.app |
 | **Demo video** | _(link)_ |
 | **Mission evidence** | [`arkiv/missions.md`](arkiv/missions.md) — on-chain hashes from the deployed app |
 | **Bytes** | Encrypted on [Swarm](https://ethswarm.org) via Swarm ID |
