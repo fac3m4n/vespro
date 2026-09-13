@@ -58,7 +58,14 @@ export async function POST(request: Request) {
       body.jobSpec ?? { model: "logistic-regression", epochs: 40, learningRate: 0.05 },
     );
 
-    return Response.json({ ...grant, settlement });
+    return Response.json({
+      ...grant,
+      settlement,
+      // The term is measured from the server's clock, not the browser's. A countdown
+      // driven by the client would drift against the chain and could show time left on
+      // a licence that has already lapsed.
+      expiresAtMs: Date.now() + grant.purchasedSeconds * 1000,
+    });
   } catch (error) {
     return Response.json({ error: message(error) }, { status: 400 });
   }
