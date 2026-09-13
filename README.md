@@ -11,8 +11,9 @@ Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and A
 
 | | |
 |---|---|
-| **Live demo** | _(deployed URL)_ |
+| **Live demo** | https://vespro-gv1i10rx1-akerimberdigmailcoms-projects.vercel.app |
 | **Demo video** | _(link)_ |
+| **Mission evidence** | [`arkiv/missions.md`](arkiv/missions.md) — on-chain hashes from the deployed app |
 | **Bytes** | Encrypted on [Swarm](https://ethswarm.org) via Swarm ID |
 | **Index and licences** | [Arkiv](https://arkiv.network) on Tiramisu, chain `7738577` |
 | **Settlement** | Avalanche Fuji C-Chain — [`0x3e4e5bf7…de94b29`](https://testnet.snowtrace.io/address/0x3e4e5bf72803e2d18d313613fa2f16662de94b29) |
