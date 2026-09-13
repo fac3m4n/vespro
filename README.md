@@ -53,7 +53,8 @@ was carried in; the dependencies are the published SDKs listed in `package.json`
 | **Repo** | https://github.com/fac3m4n/vespro — public, no invitation needed |
 | **Live demo** | https://vespro-ten.vercel.app |
 | **Demo video** | _(link)_ |
-| **Mission evidence** | [`arkiv/missions.md`](arkiv/missions.md) — on-chain hashes from the deployed app |
+| **Arkiv evidence index** | [`arkiv/submission.md`](arkiv/submission.md) — wallets, entity keys, tx hashes, how to reproduce each mission |
+| **Arkiv feedback report** | [`arkiv/feedback.md`](arkiv/feedback.md) — six findings with reproduction steps |
 | **Bytes** | Encrypted on [Swarm](https://ethswarm.org) via Swarm ID |
 | **Index and licences** | [Arkiv](https://arkiv.network) on Tiramisu, chain `7738577` |
 | **Settlement** | Avalanche Fuji C-Chain — [`0x3e4e5bf7…de94b29`](https://testnet.snowtrace.io/address/0x3e4e5bf72803e2d18d313613fa2f16662de94b29) |
