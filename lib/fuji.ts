@@ -1,6 +1,7 @@
-import { createWalletClient, http, parseAbi, publicActions } from "viem";
+import { createPublicClient, createWalletClient, http, parseEventLogs, publicActions } from "viem";
 import { avalancheFuji } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
+import { LICENCE_ABI } from "@/lib/fujiAbi";
 
 /**
  * Settlement on Avalanche Fuji.
@@ -12,16 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
  * unpaid licences is worse than one that admits settlement is off.
  */
 
-export const LICENCE_ABI = parseAbi([
-  "function registerTerms(string listingId, uint256 pricePerDayWei, uint64 minSeconds, uint64 maxSeconds, bytes32 schemaCommitment)",
-  "function quote(string listingId, uint64 termSeconds) view returns (uint256)",
-  "function purchase(string listingId, uint64 termSeconds) payable returns (uint256)",
-  "function owed(address account) view returns (uint256)",
-  "function withdraw()",
-  "function denied(string listingId, address account) view returns (bool)",
-  "function setEligibility(string listingId, address account, bool deny)",
-  "event LicencePurchased(uint256 indexed licenceId, string indexed listingId, address indexed buyer, address dataOwner, uint64 termSeconds, uint256 paid)",
-]);
+export { LICENCE_ABI } from "@/lib/fujiAbi";
 
 const CONTRACT = process.env.NEXT_PUBLIC_LICENCE_CONTRACT_ADDRESS as
   | `0x${string}`
@@ -63,6 +55,32 @@ export function fujiContractAddress(): string | null {
 }
 
 /**
+ * Who the contract will actually pay for this listing.
+ *
+ * When a seller registers terms from their own wallet the client tells us the payout
+ * address, and a client is not a source of truth about who gets paid. This reads it back
+ * from the chain so the address recorded in Arkiv is the one the contract will credit.
+ * Returns null when no terms exist, which is how `termsFor` reverts.
+ */
+export async function readTermsOwner(listing_id: string): Promise<`0x${string}` | null> {
+  if (!CONTRACT) return null;
+
+  const reader = createPublicClient({ chain: avalancheFuji, transport: http(RPC) });
+
+  try {
+    const terms = await reader.readContract({
+      address: CONTRACT,
+      abi: LICENCE_ABI,
+      functionName: "termsFor",
+      args: [listing_id],
+    });
+    return terms.dataOwner;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The asset rule, onchain. Called when a dataset is listed, so the terms a buyer pays
  * under are published before anyone can pay them.
  */
@@ -93,6 +111,57 @@ export async function registerTermsOnFuji(input: {
 
   await owner.waitForTransactionReceipt({ hash: txHash });
   return { registered: true, txHash };
+}
+
+/**
+ * Confirms a client-submitted purchase actually happened, and happened here.
+ *
+ * A buyer paying from their own wallet means the server never sees the transaction being
+ * made, only a hash afterwards. Three things therefore get checked against the chain:
+ * the receipt succeeded, it was sent to our contract, and it emitted LicencePurchased.
+ * Without the last two, any successful transaction on Fuji — a plain transfer — would buy
+ * a licence for free.
+ */
+export async function verifyPurchaseTx(
+  txHash: `0x${string}`,
+): Promise<{ ok: true; settlement: Settlement } | { ok: false; reason: string }> {
+  if (!CONTRACT) return { ok: false, reason: "settlement contract is not configured" };
+
+  const reader = createPublicClient({ chain: avalancheFuji, transport: http(RPC) });
+
+  let receipt;
+  try {
+    receipt = await reader.getTransactionReceipt({ hash: txHash });
+  } catch {
+    return { ok: false, reason: "transaction not found on Fuji" };
+  }
+
+  if (receipt.status !== "success") return { ok: false, reason: "transaction reverted" };
+  if (receipt.to?.toLowerCase() !== CONTRACT.toLowerCase()) {
+    return { ok: false, reason: "transaction was not sent to the licence contract" };
+  }
+
+  const purchases = parseEventLogs({
+    abi: LICENCE_ABI,
+    eventName: "LicencePurchased",
+    logs: receipt.logs,
+  });
+
+  const purchase = purchases[0];
+  if (!purchase) return { ok: false, reason: "no LicencePurchased event in that transaction" };
+
+  return {
+    ok: true,
+    settlement: {
+      settled: true,
+      txHash,
+      chain: "avalanche-fuji",
+      explorerUrl: `https://testnet.snowtrace.io/tx/${txHash}`,
+      paidWei: purchase.args.paid.toString(),
+      licenceId: purchase.args.licenceId.toString(),
+      note: "paid from the buyer's own wallet",
+    },
+  };
 }
 
 export async function settleOnFuji(input: {

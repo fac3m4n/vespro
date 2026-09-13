@@ -1,7 +1,7 @@
 import { createGrant, hasLiveGrant } from "@/lib/arkiv/entities";
 import { explain, liveGrant } from "@/lib/arkiv/queries";
 import { LICENCE_SECONDS, type LicenceOption } from "@/lib/arkiv/schema";
-import { settleOnFuji } from "@/lib/fuji";
+import { settleOnFuji, verifyPurchaseTx } from "@/lib/fuji";
 import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
 /**
@@ -50,10 +50,21 @@ export async function POST(request: Request) {
     // Settlement first: no licence exists unless it was paid for. When Fuji is not
     // configured this returns a clearly-labelled unsettled marker rather than
     // pretending a payment happened.
-    const settlement = await settleOnFuji({
-      listing_id: body.listing_id,
-      seconds: LICENCE_SECONDS[option],
-    });
+    //
+    // A connected buyer pays from their own wallet, so the transaction already exists by
+    // the time we get here. It is verified against the chain rather than trusted: the
+    // receipt must have succeeded and must be a call to our contract, otherwise anyone
+    // could mint a free licence by posting an unrelated transaction hash.
+    const settlement = await (async () => {
+      if (typeof body.settlement_tx === "string" && body.settlement_tx.startsWith("0x")) {
+        const verified = await verifyPurchaseTx(body.settlement_tx as `0x${string}`);
+        if (!verified.ok) {
+          throw new Error(`Settlement transaction rejected: ${verified.reason}`);
+        }
+        return verified.settlement;
+      }
+      return settleOnFuji({ listing_id: body.listing_id, seconds: LICENCE_SECONDS[option] });
+    })();
 
     const grant = await createGrant(
       body.listing_id,
@@ -61,6 +72,11 @@ export async function POST(request: Request) {
       option,
       settlement.txHash,
       body.jobSpec ?? { model: "logistic-regression", epochs: 40, learningRate: 0.05 },
+      // The licence belongs to whoever paid. Without this the grant would be written
+      // against the shared demo buyer and the connected wallet's access check would fail.
+      typeof body.buyer === "string" && /^0x[0-9a-fA-F]{40}$/.test(body.buyer)
+        ? (body.buyer as `0x${string}`)
+        : undefined,
     );
 
     return Response.json({

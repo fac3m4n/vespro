@@ -1,7 +1,7 @@
 import { createListing, fetchListings } from "@/lib/arkiv/entities";
 import { browseListings, explain } from "@/lib/arkiv/queries";
 import type { BrowseFilters } from "@/lib/arkiv/queries";
-import { registerTermsOnFuji } from "@/lib/fuji";
+import { readTermsOwner, registerTermsOnFuji } from "@/lib/fuji";
 import { LICENCE_SECONDS } from "@/lib/arkiv/schema";
 import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
@@ -71,17 +71,57 @@ export async function POST(request: Request) {
     // buyer pays under are published ahead of any purchase. A failure here does not
     // block listing the dataset — it only means this one cannot be settled, which the
     // response reports rather than hides.
-    let terms;
-    try {
-      terms = await registerTermsOnFuji({
-        listing_id,
-        price_per_day_wei,
-        minSeconds: Math.min(...Object.values(LICENCE_SECONDS)),
-        maxSeconds: Math.max(...Object.values(LICENCE_SECONDS)),
-        schemaCommitment: `0x${schema_hash.slice("sha256:".length)}`,
-      });
-    } catch (error) {
-      terms = { registered: false, txHash: null, note: message(error) };
+    const claimedPayout = String(body.payout_address ?? "");
+    let terms: {
+      registered: boolean;
+      txHash: string | null;
+      note?: string;
+      payoutAddress?: string;
+      signedByOwner?: boolean;
+    };
+
+    if (/^0x[0-9a-fA-F]{40}$/.test(claimedPayout)) {
+      // The seller registered terms from their own wallet, so they are the payee. Read
+      // it back from the contract instead of trusting the claim — otherwise anyone could
+      // publish a listing that advertises someone else's address as the recipient.
+      const onchainOwner = await readTermsOwner(listing_id);
+
+      if (!onchainOwner || onchainOwner.toLowerCase() !== claimedPayout.toLowerCase()) {
+        return Response.json(
+          {
+            error:
+              "No onchain terms found for this listing_id with that payout address. " +
+              "Register terms from the seller wallet before listing.",
+          },
+          { status: 400 },
+        );
+      }
+
+      terms = {
+        registered: true,
+        txHash: typeof body.terms_tx === "string" ? body.terms_tx : null,
+        payoutAddress: onchainOwner,
+        signedByOwner: true,
+      };
+    } else {
+      // No wallet connected: the shared demo key registers the terms and is therefore
+      // the payee. Reported as such so the UI never implies the seller will be paid.
+      try {
+        const result = await registerTermsOnFuji({
+          listing_id,
+          price_per_day_wei,
+          minSeconds: Math.min(...Object.values(LICENCE_SECONDS)),
+          maxSeconds: Math.max(...Object.values(LICENCE_SECONDS)),
+          schemaCommitment: `0x${schema_hash.slice("sha256:".length)}`,
+        });
+        terms = {
+          ...result,
+          payoutAddress: (await readTermsOwner(listing_id)) ?? undefined,
+          signedByOwner: false,
+        };
+      } catch (error) {
+        terms = { registered: false, txHash: null, note: message(error), signedByOwner: false };
+      }
     }
 
     const listing = await createListing(
@@ -93,6 +133,8 @@ export async function POST(request: Request) {
         columns: Array.isArray(body.columns) ? body.columns : [],
         description: String(body.description ?? "").slice(0, 500),
         iv: String(body.iv ?? ""),
+        payoutAddress: terms.payoutAddress ?? null,
+        payoutIsSeller: Boolean(terms.signedByOwner),
       },
     );
 

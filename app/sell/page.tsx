@@ -39,6 +39,9 @@ import {
   type SwarmStatus,
 } from "@/lib/swarm";
 import { trainLogistic, type TrainedModel } from "@/lib/training";
+import { EarningsCard } from "@/components/EarningsCard";
+import { SwarmStorageBar } from "@/components/SwarmStorageBar";
+import { onWallet, registerTermsFromWallet, type WalletState } from "@/lib/wallet";
 import { useEntityStream } from "@/lib/useEntityStream";
 
 type Published = {
@@ -64,7 +67,9 @@ export default function SellPage() {
   const [busy, setBusy] = useState(false);
   const [published, setPublished] = useState<Published[]>([]);
   const [model, setModel] = useState<TrainedModel | null>(null);
+  const [wallet, setWallet] = useState<WalletState | null>(null);
 
+  useEffect(() => onWallet(setWallet), []);
   useEffect(() => onSwarmStatus(setSwarm), []);
   useEffect(() => {
     initSwarm().catch(() => {});
@@ -179,10 +184,29 @@ export default function SellPage() {
         }),
       );
 
-      toast.loading("Registering terms on Avalanche Fuji", {
-        id: progress,
-        description: "The asset rule goes onchain before anyone can pay it.",
-      });
+      // Registered from the seller's own wallet when one is connected. This is the
+      // difference between being paid and not: the contract records msg.sender as
+      // dataOwner, so signing here is what makes the seller the payee.
+      let terms_tx: string | undefined;
+      if (wallet?.ready) {
+        toast.loading("Confirm the listing terms in your wallet", {
+          id: progress,
+          description: "This sets you as the payout address onchain.",
+        });
+        terms_tx = await registerTermsFromWallet({
+          listing_id,
+          price_per_day_wei,
+          minSeconds: 60,
+          maxSeconds: 600,
+          schemaCommitment: `0x${(await schemaHash(dataset.header)).slice("sha256:".length)}`,
+        });
+        record("fuji-tx", "terms registered by you", terms_tx);
+      } else {
+        toast.loading("Registering terms with the demo wallet", {
+          id: progress,
+          description: "Connect a wallet to be paid to your own address instead.",
+        });
+      }
 
       const response = await fetch("/api/listings", {
         method: "POST",
@@ -199,6 +223,8 @@ export default function SellPage() {
           columns: dataset.header.map((name) => ({ name, unit: "" })),
           description: `${dataset.rows.length} rows, ${schema.featureCandidates.length} features, label "${label}".`,
           iv,
+          payout_address: wallet?.ready ? wallet.address : undefined,
+          terms_tx,
         }),
       }).then((r) => r.json());
 
@@ -215,9 +241,11 @@ export default function SellPage() {
 
       toast.success(`Listed ${listing_id}`, {
         id: progress,
-        description: response.terms?.registered
-          ? "Live on Arkiv, terms registered on Fuji."
-          : `Live on Arkiv. Fuji terms failed: ${response.terms?.note ?? "unknown"}`,
+        description: response.terms?.signedByOwner
+          ? "Live on Arkiv. Payments go to your wallet."
+          : response.terms?.registered
+            ? "Live on Arkiv. Payments go to the demo wallet — connect yours to be paid."
+            : `Live on Arkiv. Fuji terms failed: ${response.terms?.note ?? "unknown"}`,
       });
     } catch (error) {
       toast.error("Publish failed", {
@@ -258,14 +286,18 @@ export default function SellPage() {
             </Badge>
           </div>
         </CardHeader>
-        {!swarm?.canUpload && (
-          <CardContent>
+        <CardContent>
+          {swarm?.canUpload ? (
+            <SwarmStorageBar />
+          ) : (
             <Button size="sm" onClick={() => void connectSwarm()}>
               Connect Swarm ID
             </Button>
-          </CardContent>
-        )}
+          )}
+        </CardContent>
       </Card>
+
+      <EarningsCard />
 
       <Card>
         <CardHeader>

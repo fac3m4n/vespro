@@ -33,6 +33,7 @@ import { ModelWeights } from "@/components/ModelWeights";
 import { record } from "@/lib/evidence";
 import { formatAvax, proRatedWei } from "@/lib/price";
 import { useEntityStream } from "@/lib/useEntityStream";
+import { onWallet, purchaseFromWallet, type WalletState } from "@/lib/wallet";
 import type { LicenceOption } from "@/lib/arkiv/schema";
 
 type Listing = {
@@ -62,6 +63,7 @@ type Purchase = {
     note?: string;
   };
   expiresAtMs: number;
+  buyer?: string;
 };
 
 type Weights = {
@@ -98,6 +100,9 @@ export default function MarketplacePage() {
   const [weights, setWeights] = useState<Weights | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [wallet, setWallet] = useState<WalletState | null>(null);
+
+  useEffect(() => onWallet(setWallet), []);
 
   const browse = useCallback(async () => {
     try {
@@ -158,11 +163,28 @@ export default function MarketplacePage() {
     setWeights(null);
     setAccess(null);
 
-    const progress = toast.loading(`Settling on Avalanche Fuji`, {
-      description: `${option} licence for ${listing.payload.listing_id}`,
-    });
+    const usingWallet = Boolean(wallet?.ready);
+    const progress = toast.loading(
+      usingWallet ? "Confirm the payment in your wallet" : "Settling with the demo wallet",
+      { description: `${option} licence for ${listing.payload.listing_id}` },
+    );
 
     try {
+      // Paid from the buyer's own wallet when one is connected, so the money and the
+      // licence belong to the same person. The server verifies the transaction against
+      // the chain before it writes the grant.
+      let settlement_tx: string | undefined;
+      if (usingWallet) {
+        const seconds = TERMS.find((t) => t.option === option)?.seconds ?? 60;
+        const paid = await purchaseFromWallet({
+          listing_id: listing.payload.listing_id,
+          seconds,
+        });
+        settlement_tx = paid.txHash;
+        record("fuji-tx", "paid from your wallet", paid.txHash);
+        toast.loading("Payment confirmed, writing the licence", { id: progress });
+      }
+
       const result = await fetch("/api/grants", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -170,6 +192,8 @@ export default function MarketplacePage() {
           listing_id: listing.payload.listing_id,
           owner: listing.owner,
           option,
+          settlement_tx,
+          buyer: wallet?.address,
           jobSpec: { model: "logistic-regression", epochs: 40, learningRate: 0.05 },
         }),
       }).then((r) => r.json());
@@ -188,6 +212,7 @@ export default function MarketplacePage() {
         purchasedSeconds: result.purchasedSeconds,
         settlement: result.settlement,
         expiresAtMs: result.expiresAtMs,
+        buyer: result.buyer,
       });
 
       toast.success(`Licensed for ${option}`, {
@@ -207,8 +232,11 @@ export default function MarketplacePage() {
   }
 
   async function checkAccess() {
-    if (!purchase || !buyer) return;
-    const params = new URLSearchParams({ listing_id: purchase.listing_id, buyer });
+    // The licence was written against whoever paid, so the check has to ask about that
+    // same address — the connected wallet when there is one, the demo buyer otherwise.
+    const holder = purchase?.buyer ?? wallet?.address ?? buyer;
+    if (!purchase || !holder) return;
+    const params = new URLSearchParams({ listing_id: purchase.listing_id, buyer: holder });
     const result: AccessCheck = await fetch(`/api/grants?${params}`).then((r) => r.json());
     setAccess(result);
     record("arkiv-query", `access check → ${result.licensed}`, result.query);

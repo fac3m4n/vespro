@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { WalletButton } from "@/components/WalletButton";
 
 const NAV = [
   { href: "/", label: "Marketplace" },
@@ -42,9 +43,13 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <p className="ml-auto hidden text-xs text-muted-foreground lg:block">
+        <p className="ml-auto hidden text-xs text-muted-foreground xl:block">
           Swarm holds the bytes · Arkiv holds the licence · Fuji settles
         </p>
+
+        <div className="ml-auto xl:ml-0">
+          <WalletButton />
+        </div>
       </div>
     </header>
   );

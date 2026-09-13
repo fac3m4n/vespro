@@ -19,8 +19,7 @@ import type { ConnectionInfo } from "@snaha/swarm-id";
 
 const IFRAME_ORIGIN = "https://swarm-id.snaha.net";
 
-let client: SwarmIdClient | null = null;
-let ready: Promise<void> | null = null;
+let ready: Promise<SwarmIdClient> | null = null;
 
 export type SwarmStatus = {
   connected: boolean;
@@ -67,33 +66,108 @@ export function swarmStatus(): SwarmStatus {
   return latest;
 }
 
-export async function initSwarm(): Promise<SwarmIdClient> {
-  if (client && ready) {
-    await ready;
-    return client;
-  }
+/**
+ * Returns the one client, creating it at most once.
+ *
+ * The promise is memoised *synchronously*. An earlier version checked a client handle and then
+ * awaited a dynamic import, which yields — so two callers racing on mount both got past
+ * the guard and each constructed a SwarmIdClient. Every client injects its own
+ * fixed-position widget iframe, so the visible symptom was two Swarm connect buttons
+ * stacked in the corner of the page.
+ */
+export function initSwarm(): Promise<SwarmIdClient> {
+  ready ??= createClient();
+  return ready;
+}
 
+async function createClient(): Promise<SwarmIdClient> {
   if (typeof window === "undefined") {
     throw new Error("Swarm ID is browser-only: initSwarm() cannot run on the server.");
   }
 
-  // Imported here rather than at module scope: the library reaches for `window` as it
-  // loads, which crashes the production prerender of any page that imports this file.
-  const { SwarmIdClient } = await import("@snaha/swarm-id");
+  try {
+    // Imported here rather than at module scope: the library reaches for `window` as it
+    // loads, which crashes the production prerender of any page that imports this file.
+    const { SwarmIdClient } = await import("@snaha/swarm-id");
 
-  client = new SwarmIdClient({
-    iframeOrigin: IFRAME_ORIGIN,
-    metadata: {
-      name: "Vespro",
-      description: "Licence your wearable data for training without giving up the rows",
-    },
-    onConnectionChange: publish,
-  });
+    const created = new SwarmIdClient({
+      iframeOrigin: IFRAME_ORIGIN,
+      metadata: {
+        name: "Vespro",
+        description: "Licence your wearable data for training without giving up the rows",
+      },
+      onConnectionChange: publish,
+    });
 
-  ready = client.initialize();
-  await ready;
-  publish(client.connectionInfo);
-  return client;
+    await created.initialize();
+    publish(created.connectionInfo);
+    return created;
+  } catch (error) {
+    // Cleared so a transient failure does not permanently poison every later call.
+    ready = null;
+    throw error;
+  }
+}
+
+export type SwarmStorage = {
+  label: string;
+  usedFraction: number;
+  capacityBytes: number;
+  remainingBytes: number;
+  /** Seconds until the batch expires and Swarm stops keeping the chunks. */
+  ttlSeconds: number | null;
+  immutable: boolean;
+  usable: boolean;
+};
+
+/**
+ * How much room is left on the postage batch.
+ *
+ * Worth showing on the seller's side because a batch is prepaid, finite storage: an
+ * upload that would exceed it fails at the point of sale, which is the worst moment to
+ * discover it. Also relevant to whether a dataset can be re-uploaded later.
+ *
+ * Usage follows the standard Bee calculation — utilization counts filled buckets, and the
+ * bucket count is 2^(depth - bucketDepth) — with capacity as 2^depth chunks of 4 KiB.
+ */
+export async function swarmStorage(): Promise<SwarmStorage | null> {
+  const c = await initSwarm();
+  const batch = await c.getPostageBatch();
+  if (!batch) return null;
+
+  const buckets = 2 ** (batch.depth - batch.bucketDepth);
+  const usedFraction = buckets > 0 ? Math.min(1, batch.utilization / buckets) : 0;
+  const capacityBytes = 2 ** batch.depth * 4096;
+
+  return {
+    label: batch.label || batch.batchID.slice(0, 8),
+    usedFraction,
+    capacityBytes,
+    remainingBytes: Math.max(0, Math.round(capacityBytes * (1 - usedFraction))),
+    ttlSeconds: batch.batchTTL ?? null,
+    immutable: batch.immutableFlag,
+    usable: batch.usable,
+  };
+}
+
+export function formatBytes(bytes: number): string {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+export function formatTtl(seconds: number | null): string {
+  if (seconds === null) return "unknown";
+  const days = Math.floor(seconds / 86400);
+  if (days >= 1) return `${days}d`;
+  const hours = Math.floor(seconds / 3600);
+  if (hours >= 1) return `${hours}h`;
+  return `${Math.max(0, Math.floor(seconds / 60))}m`;
 }
 
 export async function connectSwarm(): Promise<void> {

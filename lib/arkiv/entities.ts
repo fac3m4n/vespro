@@ -51,9 +51,15 @@ export async function createGrant(
   option: LicenceOption,
   settlement_tx: string,
   jobSpec: GrantPayload["jobSpec"],
-): Promise<CreatedEntity & { purchasedSeconds: number }> {
+  /**
+   * The address the licence is for. Defaults to the shared demo buyer, but when a real
+   * wallet paid it must be that wallet — the access check queries on this attribute, so
+   * getting it wrong would grant the licence to someone who never paid.
+   */
+  buyerAddress?: `0x${string}`,
+): Promise<CreatedEntity & { purchasedSeconds: number; buyer: `0x${string}` }> {
   const client = arkivWriteClient("buyer");
-  const buyer = client.account.address;
+  const buyer = buyerAddress ?? client.account.address;
   const purchasedSeconds = LICENCE_SECONDS[option];
 
   const payload: GrantPayload = { listing_id, purchasedSeconds, jobSpec };
@@ -65,7 +71,7 @@ export async function createGrant(
     expires: ExpirationTime.fromSeconds(purchasedSeconds),
   });
 
-  return { entityKey, txHash, purchasedSeconds };
+  return { entityKey, txHash, purchasedSeconds, buyer };
 }
 
 /**

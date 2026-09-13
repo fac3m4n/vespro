@@ -13,7 +13,8 @@
     "deploy:web": "node scripts/deploy-vercel.mjs",
     "commit": "cz",
     "lint:commit": "commitlint --last --verbose",
-    "lint:commits": "commitlint --from=$(git rev-list --max-parents=0 HEAD) --to=HEAD"
+    "lint:commits": "commitlint --from=$(git rev-list --max-parents=0 HEAD) --to=HEAD",
+    "verify:fuji": "node scripts/verify-fuji.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",

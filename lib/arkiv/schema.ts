@@ -60,6 +60,16 @@ export type ListingPayload = {
   description: string;
   /** 96-bit GCM nonce, base64. Not a secret; the key never leaves the owner. */
   iv: string;
+  /**
+   * Who the Fuji contract will credit for this listing, read back from the chain rather
+   * than taken from the client. Null when settlement is unconfigured.
+   */
+  payoutAddress: string | null;
+  /**
+   * False when the shared demo key registered the terms, which means the seller is *not*
+   * the payee. Surfaced in the UI so the demo never implies a payment it cannot make.
+   */
+  payoutIsSeller: boolean;
 };
 
 export type GrantInput = {
