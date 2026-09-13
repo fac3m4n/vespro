@@ -1,4 +1,5 @@
 # Vespro
+<img width="1220" height="678" alt="Screenshot 2026-09-13 at 07 46 41" src="https://github.com/user-attachments/assets/6d332e56-6db4-4a25-b5be-776c811d621d" />
 
 **Sell access to your data without handing over the rows.**
 
@@ -52,7 +53,7 @@ was carried in; the dependencies are the published SDKs listed in `package.json`
 |---|---|
 | **Repo** | https://github.com/fac3m4n/vespro — public, no invitation needed |
 | **Live demo** | https://vespro-ten.vercel.app |
-| **Demo video** | _(link)_ |
+| **Demo video** | [YouTUbe](https://www.youtube.com/watch?v=TQ1sknXDSiU) |
 | **Arkiv evidence index** | [`arkiv/submission.md`](arkiv/submission.md) — wallets, entity keys, tx hashes, how to reproduce each mission |
 | **Arkiv feedback report** | [`arkiv/feedback.md`](arkiv/feedback.md) — six findings with reproduction steps |
 | **Bytes** | Encrypted on [Swarm](https://ethswarm.org) via Swarm ID |
