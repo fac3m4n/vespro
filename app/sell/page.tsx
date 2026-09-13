@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { BrainCircuit, Lock, ShieldCheck, Upload } from "lucide-react";
+import { Lock, ShieldCheck, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
 import { DatasetDropzone, type LoadedDataset } from "@/components/DatasetDropzone";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { TransportBadge } from "@/components/TransportBadge";
+import { ModelWeights } from "@/components/ModelWeights";
 import {
   decryptDataset,
   encryptDataset,
@@ -231,10 +232,12 @@ export default function SellPage() {
   const canPublish = Boolean(loaded && swarm?.canUpload && !busy);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sell access, not data</h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+    <div className="space-y-10">
+      <div className="space-y-4">
+        <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+          Sell access, not data
+        </h1>
+        <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
           Your rows are encrypted in this browser and stored on Swarm as ciphertext.
           Buyers licence the dataset and send a training job; this tab decrypts, trains,
           and returns model weights. The key never leaves, and neither do the rows.
@@ -246,7 +249,7 @@ export default function SellPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-4 text-muted-foreground" />
-              <CardTitle className="text-sm">Swarm ID</CardTitle>
+              <CardTitle>Swarm ID</CardTitle>
             </div>
             <Badge variant={swarm?.canUpload ? "default" : "secondary"}>
               {swarm?.canUpload
@@ -266,8 +269,11 @@ export default function SellPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">1. Your dataset</CardTitle>
-          <CardDescription className="text-xs">
+          <CardTitle className="flex items-center">
+            <StepNumber n={1} />
+            Your dataset
+          </CardTitle>
+          <CardDescription>
             Dropped files are parsed in the browser. Nothing is uploaded until you publish.
           </CardDescription>
         </CardHeader>
@@ -278,8 +284,11 @@ export default function SellPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">2. Terms</CardTitle>
-          <CardDescription className="text-xs">
+          <CardTitle className="flex items-center">
+            <StepNumber n={2} />
+            Terms
+          </CardTitle>
+          <CardDescription>
             Published onchain before anyone can buy, so the price a buyer pays is the price
             you set.
           </CardDescription>
@@ -287,7 +296,7 @@ export default function SellPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="price" className="text-xs">
+              <Label htmlFor="price">
                 Price per day
               </Label>
               <div className="relative">
@@ -296,21 +305,21 @@ export default function SellPage() {
                   value={priceAvax}
                   onChange={(event) => setPriceAvax(event.target.value)}
                   inputMode="decimal"
-                  className="pr-14"
+                  className="pr-16"
                 />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   AVAX
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 A 60-second licence costs {shortPrice(priceAvax)}.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Metric</Label>
+              <Label>Metric</Label>
               <Select value={metric} onValueChange={setMetric}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -322,9 +331,9 @@ export default function SellPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Region</Label>
+              <Label>Region</Label>
               <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -348,7 +357,7 @@ export default function SellPage() {
           </Button>
 
           {!swarm?.canUpload && (
-            <p className="text-xs text-amber-500">
+            <p className="text-xs text-warning">
               Connect Swarm ID with a usable postage batch before publishing.
             </p>
           )}
@@ -369,11 +378,11 @@ export default function SellPage() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <BrainCircuit className="size-4 text-muted-foreground" />
-                3. Live licence feed
+              <CardTitle className="flex items-center">
+                <StepNumber n={3} />
+                Live licence feed
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription>
                 Pushed from an Arkiv subscription. Nothing here refreshes on a timer.
               </CardDescription>
             </div>
@@ -382,28 +391,18 @@ export default function SellPage() {
         </CardHeader>
         <CardContent>
           {model ? (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-emerald-400">
-                Last model returned to a buyer
-              </p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <Stat label="Rows used" value={model.rowsUsed.toLocaleString()} />
-                <Stat label="Accuracy" value={`${(model.accuracy * 100).toFixed(1)}%`} />
-                <Stat label="Base rate" value={`${(model.baseRate * 100).toFixed(1)}%`} />
-              </div>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-[11px]">
-{JSON.stringify(
-  Object.fromEntries(model.featureNames.map((n, i) => [n, model.weights[i]])),
-  null,
-  2,
-)}
-              </pre>
-            </div>
+            <ModelWeights model={model} stat="base" title="Last model returned to a buyer" />
           ) : (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Upload className="size-3.5" />
-              Waiting for a sale. Buy a licence from the marketplace in another window.
-            </p>
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <div className="grid size-11 place-items-center rounded-full bg-muted">
+                <Upload className="size-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">Waiting for a sale</p>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                Buy a licence from the marketplace in another window and this tab will
+                wake up on its own.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -413,18 +412,18 @@ export default function SellPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border px-3 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="font-mono text-sm">{value}</p>
-    </div>
-  );
-}
-
 function shortPrice(priceAvax: string): string {
   const perDay = Number(priceAvax);
   if (!Number.isFinite(perDay) || perDay <= 0) return "nothing";
   const perMinute = (perDay / 1440) * 1;
   return `${(perMinute * 1).toFixed(8).replace(/\.?0+$/, "")} AVAX`;
+}
+
+/** Keeps the three cards reading as ordered steps rather than as three similar panels. */
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="mr-2 grid size-5 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-medium text-muted-foreground">
+      {n}
+    </span>
+  );
 }

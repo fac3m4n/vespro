@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Database, ExternalLink, Search, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Clock,
+  Database,
+  ExternalLink,
+  KeyRound,
+  Lock,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { TransportBadge } from "@/components/TransportBadge";
+import { QueryBlock } from "@/components/QueryBlock";
+import { ModelWeights } from "@/components/ModelWeights";
 import { record } from "@/lib/evidence";
 import { formatAvax, proRatedWei } from "@/lib/price";
 import { useEntityStream } from "@/lib/useEntityStream";
@@ -67,6 +80,12 @@ const TERMS: { option: LicenceOption; seconds: number }[] = [
   { option: "10min", seconds: 600 },
 ];
 
+const STEPS = [
+  { icon: Lock, title: "Owner encrypts", body: "The key never leaves their browser." },
+  { icon: KeyRound, title: "You licence a term", body: "Paid on Fuji, granted on Arkiv." },
+  { icon: Sparkles, title: "You get weights", body: "Never the rows, never the key." },
+];
+
 export default function MarketplacePage() {
   const [minRows, setMinRows] = useState("100");
   const [maxPriceAvax, setMaxPriceAvax] = useState("1");
@@ -78,13 +97,14 @@ export default function MarketplacePage() {
   const [access, setAccess] = useState<AccessCheck | null>(null);
   const [weights, setWeights] = useState<Weights | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const browse = useCallback(async () => {
     try {
       const params = new URLSearchParams({ domain: "fitness" });
       if (Number(minRows) > 0) params.set("minRows", String(Math.floor(Number(minRows))));
       if (Number(maxPriceAvax) > 0) {
-        params.set("maxPrice", (BigInt(Math.floor(Number(maxPriceAvax) * 1e18))).toString());
+        params.set("maxPrice", BigInt(Math.floor(Number(maxPriceAvax) * 1e18)).toString());
       }
       if (region !== "any") params.set("region", region);
 
@@ -98,6 +118,8 @@ export default function MarketplacePage() {
       toast.error("Query failed", {
         description: error instanceof Error ? error.message : "unknown error",
       });
+    } finally {
+      setLoading(false);
     }
   }, [minRows, maxPriceAvax, region]);
 
@@ -201,243 +223,304 @@ export default function MarketplacePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="space-y-12">
+      <section className="space-y-6">
+        <Badge variant="secondary" className="gap-1.5 rounded-full py-1 pl-1.5 pr-3">
+          <span className="grid size-4 place-items-center rounded-full bg-success/20">
+            <span className="size-1.5 rounded-full bg-success" />
+          </span>
+          Live on Arkiv Tiramisu
+        </Badge>
+
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl">
           Train on data you are never given
         </h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Every dataset here stays encrypted on Swarm under its owner&apos;s key. You
-          licence it, send a training job, and get model weights back. You do not receive
-          rows, and you do not receive a key.
+
+        <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
+          Every dataset here stays encrypted on Swarm under its owner&apos;s key. You licence
+          it for a term, send a training job, and get model weights back — no rows, no key.
         </p>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Search className="size-4 text-muted-foreground" />
-            Filter
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="minRows" className="text-xs">
-                Minimum rows
-              </Label>
-              <Input
-                id="minRows"
-                value={minRows}
-                onChange={(event) => setMinRows(event.target.value)}
-                inputMode="numeric"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="maxPrice" className="text-xs">
-                Max price per day
-              </Label>
-              <div className="relative">
-                <Input
-                  id="maxPrice"
-                  value={maxPriceAvax}
-                  onChange={(event) => setMaxPriceAvax(event.target.value)}
-                  inputMode="decimal"
-                  className="pr-14"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  AVAX
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Region</Label>
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">any</SelectItem>
-                  <SelectItem value="EU">EU</SelectItem>
-                  <SelectItem value="US">US</SelectItem>
-                  <SelectItem value="APAC">APAC</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="mt-auto" onClick={() => void browse()}>
-              Apply
-            </Button>
-          </div>
-
-          {query && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">
-                One compound filter, evaluated by Arkiv — not a scan narrowed in JavaScript:
+        <div className="grid gap-3 sm:grid-cols-3">
+          {STEPS.map((step, index) => (
+            <div key={step.title} className="rounded-lg border bg-card/50 p-4">
+              <step.icon className="size-4 text-muted-foreground" />
+              <p className="mt-3 text-sm font-medium">
+                <span className="text-muted-foreground">{index + 1}. </span>
+                {step.title}
               </p>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-[11px] text-emerald-400">
-{query}
-              </pre>
+              <p className="mt-1 text-sm text-muted-foreground">{step.body}</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </section>
 
-      <div className="space-y-3">
-        <h2 className="flex items-center gap-2 text-sm font-medium">
+      <Separator />
+
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Browse datasets</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Filters become one compound query that Arkiv evaluates for you.
+            </p>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="space-y-5 pt-6">
+            <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="minRows">Minimum rows</Label>
+                <Input
+                  id="minRows"
+                  value={minRows}
+                  onChange={(event) => setMinRows(event.target.value)}
+                  inputMode="numeric"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxPrice">Max price per day</Label>
+                <div className="relative">
+                  <Input
+                    id="maxPrice"
+                    value={maxPriceAvax}
+                    onChange={(event) => setMaxPriceAvax(event.target.value)}
+                    inputMode="decimal"
+                    className="pr-16"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    AVAX
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Region</Label>
+                <Select value={region} onValueChange={setRegion}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Any region</SelectItem>
+                    <SelectItem value="EU">EU</SelectItem>
+                    <SelectItem value="US">US</SelectItem>
+                    <SelectItem value="APAC">APAC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => void browse()}>
+                <Search />
+                Apply filters
+              </Button>
+            </div>
+
+            {query && (
+              <QueryBlock
+                caption="Evaluated by Arkiv — not a full scan narrowed in JavaScript"
+                query={query}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center gap-2 pt-2">
           <Database className="size-4 text-muted-foreground" />
-          {listings.length} dataset{listings.length === 1 ? "" : "s"}
-        </h2>
+          <h3 className="text-sm font-medium">
+            {loading ? "Searching…" : `${listings.length} dataset${listings.length === 1 ? "" : "s"}`}
+          </h3>
+        </div>
 
-        {listings.length === 0 && (
-          <Card>
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              Nothing listed yet. Open <span className="font-mono">/sell</span> in a second
-              window and publish one.
+        {loading && (
+          <div className="space-y-3">
+            {[0, 1].map((i) => (
+              <Card key={i}>
+                <CardContent className="flex justify-between gap-4 pt-6">
+                  <div className="w-full space-y-3">
+                    <Skeleton className="h-5 w-52" />
+                    <Skeleton className="h-4 w-full max-w-md" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-9 w-48 shrink-0" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!loading && listings.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+              <div className="grid size-11 place-items-center rounded-full bg-muted">
+                <Database className="size-5 text-muted-foreground" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="font-medium">No datasets listed right now</p>
+                <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+                  Listings expire on their own after 15 minutes — that is the same mechanism
+                  the licences use. Publish one to fill the marketplace.
+                </p>
+              </div>
+              <Button variant="outline" asChild>
+                <a href="/sell">
+                  Publish a dataset
+                  <ArrowRight />
+                </a>
+              </Button>
             </CardContent>
           </Card>
         )}
 
-        {listings.map((listing) => {
-          const pricePerDay = BigInt(listing.attributes.price_per_day_wei ?? "0");
-          return (
-            <Card key={listing.key}>
-              <CardContent className="flex flex-wrap items-start justify-between gap-4 py-5">
-                <div className="min-w-0 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm">{listing.payload.listing_id}</span>
-                    <Badge variant="secondary">{listing.attributes.region}</Badge>
-                    <Badge variant="outline">{listing.attributes.metric}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {listing.payload.description}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {listing.payload.columns?.slice(0, 8).map((column) => (
-                      <Badge key={column.name} variant="outline" className="font-mono text-[10px]">
-                        {column.name}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-xs">
-                    <span className="text-muted-foreground">
-                      {Number(listing.attributes.row_count).toLocaleString()} rows ·{" "}
-                    </span>
-                    <span className="font-medium">{formatAvax(pricePerDay)}/day</span>
-                  </p>
-                </div>
+        <div className="space-y-3">
+          {listings.map((listing) => {
+            const pricePerDay = BigInt(listing.attributes.price_per_day_wei ?? "0");
+            return (
+              <Card key={listing.key} className="transition-colors hover:border-foreground/20">
+                <CardContent className="flex flex-col gap-6 pt-6 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-base font-medium">
+                        {listing.payload.listing_id}
+                      </span>
+                      <Badge variant="secondary">{listing.attributes.region}</Badge>
+                      <Badge variant="outline">{listing.attributes.metric}</Badge>
+                    </div>
 
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Licence for</p>
-                  <div className="flex gap-2">
-                    {TERMS.map(({ option, seconds }) => (
-                      <Button
-                        key={option}
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => void buy(listing, option)}
-                      >
-                        {option}
-                        <span className="ml-1 text-[10px] text-muted-foreground">
-                          {formatAvax(proRatedWei(pricePerDay, seconds), 8)}
-                        </span>
-                      </Button>
-                    ))}
+                    {listing.payload.description && (
+                      <p className="max-w-xl text-sm text-muted-foreground">
+                        {listing.payload.description}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                      <span className="text-2xl font-semibold tracking-tight">
+                        {formatAvax(pricePerDay)}
+                      </span>
+                      <span className="text-muted-foreground">AVAX / day</span>
+                      <span className="text-muted-foreground">
+                        · {Number(listing.attributes.row_count).toLocaleString()} rows
+                      </span>
+                    </div>
+
+                    <ColumnBadges columns={listing.payload.columns} />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+
+                  <div className="shrink-0 space-y-2 lg:text-right">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Licence for
+                    </p>
+                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                      {TERMS.map(({ option, seconds }) => (
+                        <Button
+                          key={option}
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => void buy(listing, option)}
+                          className="h-auto flex-col items-start gap-0.5 px-3 py-2"
+                        >
+                          <span className="font-medium">{option}</span>
+                          <span className="font-mono text-[11px] font-normal text-muted-foreground">
+                            {formatAvax(proRatedWei(pricePerDay, seconds), 8)}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
 
       {purchase && (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Clock className="size-4 text-muted-foreground" />
-                  Your licence
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  {purchase.listing_id} · {purchase.purchasedSeconds}s term
-                </CardDescription>
-              </div>
-              <TransportBadge state={stream} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Countdown purchase={purchase} />
-
-            {purchase.settlement.settled ? (
-              <p className="text-xs text-muted-foreground">
-                Paid {formatAvax(purchase.settlement.paidWei ?? "0")} on Avalanche Fuji ·{" "}
-                <a
-                  href={purchase.settlement.explorerUrl ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-foreground underline decoration-dotted"
-                >
-                  view transaction
-                  <ExternalLink className="size-3" />
-                </a>
-              </p>
-            ) : (
-              <p className="text-xs text-amber-500">
-                Settlement skipped — {purchase.settlement.note ?? "Fuji not configured"}
-              </p>
-            )}
-
-            <div className="space-y-2">
-              <Button variant="outline" size="sm" onClick={() => void checkAccess()}>
-                Run the access check
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Run it now, wait for the countdown, then run it again. Same query, no delete
-                call in between.
-              </p>
-            </div>
-
-            {access && (
-              <div className="space-y-2">
-                <p className="text-xs">
-                  Licensed:{" "}
-                  <span className={access.licensed ? "text-emerald-400" : "text-destructive"}>
-                    {String(access.licensed)}
-                  </span>
-                  <span className="ml-2 text-muted-foreground">
-                    {new Date(access.checkedAt).toLocaleTimeString()}
-                  </span>
-                </p>
-                <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-[11px] text-emerald-400">
-{access.query}
-                </pre>
-              </div>
-            )}
-
-            {weights && (
-              <div className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <p className="flex items-center gap-2 text-xs font-medium text-emerald-400">
-                  <Sparkles className="size-3.5" />
-                  Model received — trained on rows you never saw
-                </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <Stat label="Rows used" value={weights.rowsUsed.toLocaleString()} />
-                  <Stat label="Accuracy" value={`${(weights.accuracy * 100).toFixed(1)}%`} />
-                  <Stat label="Predicting" value={weights.labelName} />
+        <section className="space-y-5">
+          <Separator />
+          <Card className="border-success/30">
+            <CardHeader>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="size-4 text-muted-foreground" />
+                    Your licence
+                  </CardTitle>
+                  <CardDescription className="font-mono">
+                    {purchase.listing_id} · {purchase.purchasedSeconds}s term
+                  </CardDescription>
                 </div>
-                <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-[11px]">
-{JSON.stringify(
-  Object.fromEntries(weights.featureNames.map((n, i) => [n, weights.weights[i]])),
-  null,
-  2,
-)}
-                </pre>
+                <TransportBadge state={stream} />
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Countdown purchase={purchase} />
+
+              {purchase.settlement.settled ? (
+                <p className="text-sm text-muted-foreground">
+                  Paid {formatAvax(purchase.settlement.paidWei ?? "0")} AVAX on Fuji ·{" "}
+                  <a
+                    href={purchase.settlement.explorerUrl ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-dotted underline-offset-4"
+                  >
+                    view transaction
+                    <ExternalLink className="size-3" />
+                  </a>
+                </p>
+              ) : (
+                <p className="text-sm text-warning">
+                  Settlement skipped — {purchase.settlement.note ?? "Fuji not configured"}
+                </p>
+              )}
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Verify the licence yourself</p>
+                    <p className="max-w-md text-sm text-muted-foreground">
+                      Run it now, wait for the countdown, then run it again. Same query, and
+                      no delete call in between.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => void checkAccess()}>
+                    Run access check
+                  </Button>
+                </div>
+
+                {access && (
+                  <div className="space-y-2 rounded-lg border bg-muted/40 p-4">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Licensed</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          access.licensed
+                            ? "border-success/40 bg-success/10 text-success"
+                            : "border-destructive/40 bg-destructive/10 text-destructive"
+                        }
+                      >
+                        {String(access.licensed)}
+                      </Badge>
+                      <span className="ml-auto font-mono text-xs text-muted-foreground">
+                        {new Date(access.checkedAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <QueryBlock query={access.query} />
+                  </div>
+                )}
+              </div>
+
+              {weights && (
+                <ModelWeights
+                  model={weights}
+                  stat="accuracy"
+                  title="Model received — trained on rows you never saw"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </section>
       )}
 
       <EvidencePanel />
@@ -445,11 +528,34 @@ export default function MarketplacePage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/**
+ * Payloads are opaque bytes chosen by whoever wrote the entity, so a listing can carry
+ * columns in a shape this page never produced. Anything without a usable name is dropped
+ * rather than rendered as an empty pill.
+ */
+function ColumnBadges({ columns }: { columns: { name: string }[] | undefined }) {
+  const names = (columns ?? [])
+    .map((column) => (typeof column?.name === "string" ? column.name : ""))
+    .filter(Boolean);
+
+  if (names.length === 0) return null;
+
   return (
-    <div className="rounded-md border bg-background px-3 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="truncate font-mono text-sm">{value}</p>
+    <div className="flex flex-wrap gap-1.5">
+      {names.slice(0, 8).map((name, index) => (
+        <Badge
+          key={`${name}-${index}`}
+          variant="outline"
+          className="font-mono text-[11px] font-normal text-muted-foreground"
+        >
+          {name}
+        </Badge>
+      ))}
+      {names.length > 8 && (
+        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+          +{names.length - 8} more
+        </Badge>
+      )}
     </div>
   );
 }
@@ -470,24 +576,29 @@ function Countdown({ purchase }: { purchase: Purchase }) {
   const pct = (remaining / purchase.purchasedSeconds) * 100;
 
   return (
-    <div className="space-y-2">
-      <p
-        className={`font-mono text-3xl tabular-nums ${
-          expired ? "text-destructive" : "text-emerald-400"
-        }`}
-      >
-        {expired ? "licence lapsed" : `${remaining.toFixed(1)}s`}
-      </p>
-      <div className="h-1 overflow-hidden rounded-full bg-muted">
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <p
+          className={`font-mono text-5xl font-medium tabular-nums ${
+            expired ? "text-destructive" : "text-success"
+          }`}
+        >
+          {expired ? "expired" : `${remaining.toFixed(1)}s`}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {expired ? "the entity is gone" : "time left on the entity"}
+        </p>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full transition-all duration-200 ${
-            expired ? "bg-destructive" : "bg-emerald-500"
+            expired ? "bg-destructive" : "bg-success"
           }`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        This is the Arkiv entity&apos;s lifetime, not a timer this app enforces. Nothing
+      <p className="text-sm text-muted-foreground">
+        This is the Arkiv entity&apos;s own lifetime, not a timer this app enforces. Nothing
         will delete it.
       </p>
     </div>

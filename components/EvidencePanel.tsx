@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, ReceiptText, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { clearEvidence, onEvidence, truncate, type Evidence, type EvidenceKind } from "@/lib/evidence";
+import {
+  clearEvidence,
+  onEvidence,
+  truncate,
+  type Evidence,
+  type EvidenceKind,
+} from "@/lib/evidence";
 
 const LABELS: Record<EvidenceKind, string> = {
   "arkiv-entity": "Arkiv entity",
@@ -16,13 +22,17 @@ const LABELS: Record<EvidenceKind, string> = {
   local: "Local",
 };
 
+/**
+ * The hues are load-bearing: at judging time the useful question is "which system did
+ * that", and colour answers it faster than reading each label.
+ */
 const TONES: Record<EvidenceKind, string> = {
-  "arkiv-entity": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  "arkiv-tx": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  "arkiv-query": "bg-sky-500/10 text-sky-400 border-sky-500/20",
-  "fuji-tx": "bg-red-500/10 text-red-400 border-red-500/20",
-  "swarm-ref": "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  local: "bg-muted text-muted-foreground",
+  "arkiv-entity": "border-success/25 bg-success/10 text-success",
+  "arkiv-tx": "border-success/25 bg-success/10 text-success",
+  "arkiv-query": "border-sky-500/25 bg-sky-500/10 text-sky-400",
+  "fuji-tx": "border-red-500/25 bg-red-500/10 text-red-400",
+  "swarm-ref": "border-orange-500/25 bg-orange-500/10 text-orange-400",
+  local: "border-border bg-muted text-muted-foreground",
 };
 
 /**
@@ -40,15 +50,23 @@ export function EvidencePanel() {
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-sm">Evidence</CardTitle>
-            <CardDescription className="text-xs">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <ReceiptText className="size-4 text-muted-foreground" />
+              Evidence
+              {entries.length > 0 && (
+                <Badge variant="secondary" className="ml-1 rounded-full">
+                  {entries.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
               Every transaction, entity and query this session produced.
             </CardDescription>
           </div>
           {entries.length > 0 && (
             <Button variant="ghost" size="sm" onClick={clearEvidence}>
-              <Trash2 className="size-3.5" />
+              <Trash2 />
               Clear
             </Button>
           )}
@@ -56,36 +74,42 @@ export function EvidencePanel() {
       </CardHeader>
       <CardContent>
         {entries.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             Nothing yet. Publish a dataset or buy a licence.
           </p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-lg border">
             {entries.map((entry) => (
-              <li key={entry.id} className="flex items-center gap-2 text-xs">
+              <li
+                key={entry.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-xs transition-colors hover:bg-muted/40"
+              >
                 <Badge
                   variant="outline"
-                  className={`shrink-0 border text-[10px] ${TONES[entry.kind]}`}
+                  className={`shrink-0 rounded-md font-normal ${TONES[entry.kind]}`}
                 >
                   {LABELS[entry.kind]}
                 </Badge>
+
                 <span className="shrink-0 text-muted-foreground">{entry.label}</span>
+
                 {entry.url ? (
                   <a
                     href={entry.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-w-0 items-center gap-1 truncate font-mono text-foreground/80 underline decoration-dotted hover:text-foreground"
+                    className="inline-flex min-w-0 items-center gap-1 truncate font-mono text-foreground/80 underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
                   >
                     {truncate(entry.value)}
                     <ExternalLink className="size-3 shrink-0" />
                   </a>
                 ) : (
-                  <span className="min-w-0 truncate font-mono text-foreground/60">
+                  <span className="min-w-0 truncate font-mono text-muted-foreground">
                     {truncate(entry.value, 40, 8)}
                   </span>
                 )}
-                <span className="ml-auto shrink-0 text-muted-foreground/60">
+
+                <span className="ml-auto shrink-0 font-mono text-muted-foreground/60">
                   {new Date(entry.at).toLocaleTimeString()}
                 </span>
               </li>

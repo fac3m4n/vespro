@@ -159,7 +159,7 @@ function SchemaPreview({ loaded }: { loaded: LoadedDataset }) {
       {schema.warnings.length > 0 && (
         <ul className="space-y-1">
           {schema.warnings.map((warning) => (
-            <li key={warning} className="flex items-start gap-2 text-xs text-amber-500">
+            <li key={warning} className="flex items-start gap-2 text-xs text-warning">
               <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
               {warning}
             </li>

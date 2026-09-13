@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,27 +13,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3.5">
-            <Link href="/" className="font-semibold tracking-tight">
-              Vespro
-            </Link>
-            <nav className="flex gap-4 text-sm text-muted-foreground">
-              <Link href="/" className="transition-colors hover:text-foreground">
-                Marketplace
-              </Link>
-              <Link href="/sell" className="transition-colors hover:text-foreground">
-                Sell data
-              </Link>
-            </nav>
-            <p className="ml-auto hidden text-xs text-muted-foreground sm:block">
-              Swarm holds the bytes · Arkiv holds the licence · Fuji settles
-            </p>
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+        <SiteHeader />
+        <main className="mx-auto max-w-5xl px-6 py-10 md:py-14">{children}</main>
+        <footer className="mx-auto max-w-5xl px-6 pb-10 text-xs text-muted-foreground">
+          Built at ETHRome 2026 · testnets only, nothing here moves real money
+        </footer>
         <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>

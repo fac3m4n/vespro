@@ -1,5 +1,6 @@
 "use client";
 
+import { Radio, TriangleAlert } from "lucide-react";
 import type { StreamState } from "@/lib/useEntityStream";
 
 /**
@@ -14,32 +15,36 @@ export function TransportBadge({ state }: { state: StreamState }) {
   const good = state.live && state.transport === "webSocket";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="flex flex-col items-start gap-1.5 text-xs sm:items-end">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
+        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 font-medium ring-1 ${
           good
-            ? "bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30"
-            : "bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/30"
+            ? "bg-success/10 text-success ring-success/30"
+            : "bg-warning/10 text-warning ring-warning/30"
         }`}
       >
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            good ? "animate-pulse bg-emerald-400" : "bg-amber-400"
-          }`}
-        />
-        transport: {state.transport}
-        {good ? " · subscription open" : " · not live"}
+        {good ? (
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+          </span>
+        ) : (
+          <TriangleAlert className="size-3" />
+        )}
+        <span className="font-mono">{state.transport}</span>
+        {good ? "· subscription open" : "· not live"}
       </span>
 
-      <span className="text-neutral-500">no fromBlock, no polling interval</span>
+      <span className="flex items-center gap-1 text-muted-foreground">
+        <Radio className="size-3" />
+        no fromBlock, no polling interval
+      </span>
 
       {state.reconnects > 0 && (
-        <span className="text-amber-400">{state.reconnects} reconnect(s)</span>
+        <span className="text-warning">{state.reconnects} reconnect(s)</span>
       )}
 
-      {state.error && (
-        <span className="w-full text-amber-400/90">{state.error}</span>
-      )}
+      {state.error && <span className="max-w-xs text-warning/90 sm:text-right">{state.error}</span>}
     </div>
   );
 }
