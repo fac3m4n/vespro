@@ -165,6 +165,29 @@ export async function fetchOwnerListings(owner: `0x${string}`) {
   }));
 }
 
+/**
+ * One entity by key.
+ *
+ * `getEntity` throws rather than returning null when the entity has expired, which is
+ * the correct shape for Vespro: a lapsed grant is not a grant with a flag set, so the
+ * caller gets `null` and treats it as no licence.
+ */
+export async function fetchEntity(entityKey: `0x${string}`) {
+  const client = arkivReadClient();
+  try {
+    const entity = await client.getEntity(entityKey);
+    return {
+      key: entity.key,
+      owner: entity.owner,
+      expiresAt: entity.expiresAt.toString(),
+      attributes: flatten(entity.attributes),
+      payload: entity.toJson() as Record<string, unknown>,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function addresses() {
   return { owner: roleAddress("owner"), buyer: roleAddress("buyer") };
 }

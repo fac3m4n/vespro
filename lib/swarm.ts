@@ -1,6 +1,6 @@
 "use client";
 
-import { SwarmIdClient } from "@snaha/swarm-id";
+import type { SwarmIdClient } from "@snaha/swarm-id";
 import type { ConnectionInfo } from "@snaha/swarm-id";
 
 /**
@@ -72,6 +72,14 @@ export async function initSwarm(): Promise<SwarmIdClient> {
     await ready;
     return client;
   }
+
+  if (typeof window === "undefined") {
+    throw new Error("Swarm ID is browser-only: initSwarm() cannot run on the server.");
+  }
+
+  // Imported here rather than at module scope: the library reaches for `window` as it
+  // loads, which crashes the production prerender of any page that imports this file.
+  const { SwarmIdClient } = await import("@snaha/swarm-id");
 
   client = new SwarmIdClient({
     iframeOrigin: IFRAME_ORIGIN,
