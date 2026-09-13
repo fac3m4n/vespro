@@ -33,7 +33,7 @@ import { avaxToWei } from "@/lib/price";
 import {
   connectSwarm,
   downloadFromSwarm,
-  initSwarm,
+  restoreSwarm,
   onSwarmStatus,
   uploadToSwarm,
   type SwarmStatus,
@@ -72,7 +72,9 @@ export default function SellPage() {
   useEffect(() => onWallet(setWallet), []);
   useEffect(() => onSwarmStatus(setSwarm), []);
   useEffect(() => {
-    initSwarm().catch(() => {});
+    // Reconnects on its own when this browser has connected before, so a refresh does not
+    // cost a click. A first-time visitor still has to press the button.
+    restoreSwarm().catch(() => {});
   }, []);
 
   /**

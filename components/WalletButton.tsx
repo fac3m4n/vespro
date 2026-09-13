@@ -71,13 +71,28 @@ export function WalletButton() {
   }
 
   if (!wallet.address) {
-    // `optedIn` means this browser authorised the site before, so an empty account list
-    // is a locked wallet rather than a first visit. Saying "Reconnect" avoids implying the
-    // previous session was thrown away.
+    /**
+     * `optedIn` means this browser authorised the site before, so an empty account list is
+     * a locked wallet rather than a first visit. Worth distinguishing: MetaMask reports no
+     * accounts while locked even though the authorisation is still there, so the honest
+     * message is "unlock", not "connect" — the session was never lost.
+     */
+    const locked = wallet.optedIn;
+
     return (
-      <Button size="sm" variant="outline" disabled={busy} onClick={() => void connect()}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => void connect()}
+        title={
+          locked
+            ? "Your wallet is locked. Unlocking it restores this session — the site is still authorised."
+            : undefined
+        }
+      >
         <Wallet />
-        {busy ? "Connecting…" : wallet.optedIn ? "Reconnect wallet" : "Connect wallet"}
+        {busy ? "Connecting…" : locked ? "Unlock wallet" : "Connect wallet"}
       </Button>
     );
   }

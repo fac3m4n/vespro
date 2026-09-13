@@ -170,10 +170,57 @@ export function formatTtl(seconds: number | null): string {
   return `${Math.max(0, Math.floor(seconds / 60))}m`;
 }
 
+/**
+ * Whether this browser has authorised Swarm ID before.
+ *
+ * Same reasoning as the wallet flag: `initialize()` restores an existing session on its
+ * own, but when it comes back with no identity we need to know whether that means "new
+ * visitor" or "session lapsed, reconnect". Only the second should reconnect on its own.
+ */
+const SWARM_OPTED_IN_KEY = "vespro:swarm-opted-in";
+
+function rememberSwarmOptIn() {
+  try {
+    localStorage.setItem(SWARM_OPTED_IN_KEY, "1");
+  } catch {
+    // Private-mode storage failure is not worth failing a connection over.
+  }
+}
+
+export function swarmOptedIn(): boolean {
+  try {
+    return localStorage.getItem(SWARM_OPTED_IN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export async function connectSwarm(): Promise<void> {
   const c = await initSwarm();
   await c.connect();
+  rememberSwarmOptIn();
   publish(c.connectionInfo);
+}
+
+/**
+ * Restores a Swarm session without user interaction.
+ *
+ * `initialize()` already rehydrates a stored session, so in the common case this does
+ * nothing and the status simply arrives connected. It only calls `connect()` when this
+ * browser has connected before and the session did not come back — and it stays silent
+ * about failures, because a popup the browser blocks for lack of a user gesture is an
+ * expected outcome here, not an error worth showing.
+ */
+export async function restoreSwarm(): Promise<void> {
+  const c = await initSwarm();
+  if (c.connectionInfo?.identity || !swarmOptedIn()) return;
+
+  try {
+    await c.connect();
+    publish(c.connectionInfo);
+  } catch {
+    // Left for the explicit button.
+  }
 }
 
 /** Returns the Swarm reference — the content hash that goes in the Arkiv payload. */

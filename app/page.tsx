@@ -46,6 +46,8 @@ type Listing = {
     swarmHash: string;
     description: string;
     columns: { name: string }[];
+    payoutAddress: string | null;
+    payoutIsSeller: boolean;
   };
 };
 
@@ -429,6 +431,8 @@ export default function MarketplacePage() {
                       </span>
                     </div>
 
+                    <Payee listing={listing} connected={wallet?.address ?? null} />
+
                     <ColumnBadges columns={listing.payload.columns} />
                   </div>
 
@@ -553,6 +557,41 @@ export default function MarketplacePage() {
 
       <EvidencePanel />
     </div>
+  );
+}
+
+/**
+ * Who the contract will credit for this listing.
+ *
+ * Shown because with a single wallet driving both sides of the demo the payment is
+ * circular — you buy from yourself — and that is much less confusing stated outright than
+ * discovered. It also exposes the case that matters: a listing whose terms were signed by
+ * the shared demo key pays the demo key, not the seller.
+ */
+function Payee({ listing, connected }: { listing: Listing; connected: string | null }) {
+  const payee = listing.payload.payoutAddress;
+  if (!payee) return null;
+
+  const isYou = connected && payee.toLowerCase() === connected.toLowerCase();
+
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+      Paid to
+      <span className="font-mono">
+        {payee.slice(0, 6)}…{payee.slice(-4)}
+      </span>
+      {isYou ? (
+        <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+          you
+        </Badge>
+      ) : listing.payload.payoutIsSeller ? (
+        <Badge variant="outline">seller wallet</Badge>
+      ) : (
+        <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning">
+          demo wallet
+        </Badge>
+      )}
+    </p>
   );
 }
 
