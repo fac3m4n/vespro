@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check": "node scripts/check-network.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",
