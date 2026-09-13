@@ -15,7 +15,8 @@
     "lint:commit": "commitlint --last --verbose",
     "lint:commits": "commitlint --from=$(git rev-list --max-parents=0 HEAD) --to=HEAD",
     "verify:fuji": "node scripts/verify-fuji.mjs",
-    "e2e:wallet": "npx tsx scripts/e2e-one-wallet.mjs"
+    "e2e:wallet": "npx tsx scripts/e2e-one-wallet.mjs",
+    "env:sync": "node scripts/sync-vercel-env.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",
