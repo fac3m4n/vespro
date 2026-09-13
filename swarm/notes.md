@@ -20,7 +20,57 @@ Content addressing does a second job we did not anticipate: the Swarm hash recor
 an Arkiv listing pins exactly which bytes were licensed, so a seller cannot swap the
 dataset out from under a buyer after settlement.
 
-## One piece of feedback
+## What we actually used
+
+`@snaha/swarm-id@0.4.1`, and four methods: `connect()`, `uploadData()`,
+`downloadData()`, `getPostageBatch()`. Plus the public gateway's HTTP API for the
+verification links in the app's evidence panel.
+
+Not used, so as not to overclaim: bee-js directly, Feeds, feed manifests, ACT,
+`swarm-cli`, and Swarm website hosting. The app is on Vercel because it needs server
+routes to hold signing keys; only the datasets are on Swarm.
+
+## Feedback
+
+### `/bzz` answers 308 for a raw-bytes reference, so a working upload looks broken
+
+`uploadData()` stores raw bytes, which are retrievable at `/bytes/<ref>`. We built our
+verification links against `/bzz/<ref>` — the endpoint every example and gateway URL
+shows — and got a 308 redirect and no data. It looked exactly like a failed upload, and
+we spent time hunting a bug in our own encryption before testing the other endpoint:
+
+```
+curl -s -o /dev/null -w "%{http_code}" https://download.gateway.ethswarm.org/bzz/<ref>
+308
+curl -s -o /dev/null -w "%{http_code}" https://download.gateway.ethswarm.org/bytes/<ref>
+200
+```
+
+`/bzz` resolves a manifest, and a bytes reference has none — that is reasonable once you
+know it. The gap is that nothing connects the upload method to its matching download
+endpoint. `uploadData()`'s docs could say "retrieve at `/bytes`", or the 308 could carry a
+body explaining that the reference is not a manifest. A one-line note next to
+`uploadData`/`uploadFile` would have saved us twenty minutes at 6am.
+
+### Postage batch capacity is hard to report honestly
+
+We wanted to show a seller how much room is left. `getPostageBatch()` returns
+`utilization`, `depth` and `bucketDepth`, and turning those into "bytes free" means
+knowing that the bucket count is `2^(depth - bucketDepth)` and capacity is
+`2^depth * 4096`. We got there, but two things are easy to get wrong and we suspect most
+apps do:
+
+- `utilization` is not a percentage or a byte count, and nothing in the type says so.
+- `2^depth * 4096` is a *theoretical* ceiling. Chunks land in buckets by hash, so a batch
+  stops accepting uploads when a single bucket fills — well before the nominal figure. An
+  app that prints it as "free space" is overstating what the user has. Ours now labels it
+  theoretical and shows the bucket counts alongside, which felt like the only honest option.
+
+A helper on the client — `bytesUsed` / `bytesRemaining`, or an `effectiveCapacity` that
+accounts for bucket distribution — would stop everyone reimplementing this from the Bee
+source, and getting it subtly wrong in different ways.
+
+### A global `message` listener warns on every unrelated postMessage
 
 **A global `message` listener warns on every unrelated postMessage.**
 
