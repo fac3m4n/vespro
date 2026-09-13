@@ -197,6 +197,21 @@ missing rather than letting it fail later as a confusing UI error.
 Then open two windows: `/sell` to publish a dataset, `/` to licence it. Buy a **60s**
 licence, run the access check, wait for the countdown, and run the same check again.
 
+### Deploying
+
+```bash
+npm run verify:fuji   # so Snowtrace shows function names, not bare selectors
+npm run env:sync      # copy .env.local into the Vercel project
+npm run deploy:web
+```
+
+`env:sync` is the step that is easy to miss. Passing variables to a single deploy with
+`--env` does not store them on the project, so a build triggered by a git push has none
+of them — and that build *succeeds*, then fails at runtime, because the websocket client
+throws without `NEXT_PUBLIC_ARKIV_RPC_WS` and every write route throws without its
+signing key. `NEXT_PUBLIC_*` values are inlined at build time, so changing one needs a
+fresh build rather than a redeploy of the same output.
+
 ## Layout
 
 | Path | What |
