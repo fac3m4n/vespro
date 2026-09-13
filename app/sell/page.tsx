@@ -68,8 +68,15 @@ export default function SellPage() {
   const [published, setPublished] = useState<Published[]>([]);
   const [model, setModel] = useState<TrainedModel | null>(null);
   const [wallet, setWallet] = useState<WalletState | null>(null);
+  const [arkivOwner, setArkivOwner] = useState<string | null>(null);
 
   useEffect(() => onWallet(setWallet), []);
+  useEffect(() => {
+    fetch("/api/whoami")
+      .then((r) => r.json())
+      .then((d) => setArkivOwner(d.owner ?? null))
+      .catch(() => {});
+  }, []);
   useEffect(() => onSwarmStatus(setSwarm), []);
   useEffect(() => {
     // Reconnects on its own when this browser has connected before, so a refresh does not
@@ -138,9 +145,19 @@ export default function SellPage() {
     }
   }, []);
 
-  const stream = useEntityStream((event) => {
-    if (event.name === "EntityCreated") void onEntityCreated(event.entityKey);
-  });
+  /**
+   * Filtered to entities this app wrote.
+   *
+   * Grants and listings are both created by the Arkiv owner wallet, so anything with a
+   * different owner belongs to another project on the shared chain. Before this filter
+   * every stranger's write cost a request to /api/grants/detail and came back 404.
+   */
+  const stream = useEntityStream(
+    (event) => {
+      if (event.name === "EntityCreated") void onEntityCreated(event.entityKey);
+    },
+    { owner: arkivOwner },
+  );
 
   async function publish() {
     if (!loaded) return;

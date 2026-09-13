@@ -40,6 +40,13 @@ export function TransportBadge({ state }: { state: StreamState }) {
         no fromBlock, no polling interval
       </span>
 
+      {/* The chain is shared, so most of this traffic is other projects'. Showing the
+          total is what makes an open socket visible while none of it is ours. */}
+      <span className="text-muted-foreground">
+        {state.received} event{state.received === 1 ? "" : "s"} on chain ·{" "}
+        {state.events.length} ours
+      </span>
+
       {state.reconnects > 0 && (
         <span className="text-warning">{state.reconnects} reconnect(s)</span>
       )}

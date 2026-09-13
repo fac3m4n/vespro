@@ -9,10 +9,41 @@ it for a fixed term, and they get model weights back instead of your data.
 
 Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and AI.
 
-**Mission completed: Arkiv Mission 02 — Entity Expiration as the access-control
-mechanism.** Mission 03 — a real websocket subscription rather than a poll wearing one's
-clothes — is delivered alongside it. On-chain evidence for both is in
-[`arkiv/missions.md`](arkiv/missions.md).
+Mission completed: Mission 02 — Built to expire. A licence ends because its Arkiv entity
+expired on its own; nothing deletes it and no cleanup job runs. Mission 03 — Live wire is
+delivered alongside it: the seller's UI reacts to entity changes over a WebSocket
+subscription with no polling fallback.
+
+### Mission 02 evidence — the same query either side of natural expiration
+
+Reproduce with `npm run e2e`. This run is from Tiramisu, 13 Sep 2026:
+
+| | |
+|---|---|
+| Requested lifetime | 60s — **30 blocks** at 2s per block |
+| Applied expiry | block `381902`, against block `381873` at creation — **29 blocks** as applied |
+| Grant entity | `0x7761082548cf0f365a40ef71c7157b5edf8d3d6ffa135da925655fc37e983cb6` |
+| Creation tx | `0xc766d9733374bd70dbe8370164b162608ed94bc504e6a6c71819219399c07af0` |
+
+The query is byte-identical at every step; only the answer changes.
+
+```
+project = str('vespro-ethrome-2026-q7f3') AND kind = str('grant')
+  AND listing_id = str('e2e-mtzaepis') AND buyer = addr(0xa4F498E6…)
+  ...createdBy(0x2BAcd08F…)
+```
+
+| Step | `licensed` |
+|---|---|
+| before purchase | `false` |
+| after purchase | `true` |
+| +10s … +52s | `true` |
+| +62s, past the applied expiry block | `false` |
+
+**No delete caused that change.** `rg -n "deleteEntity" lib app contracts scripts` returns
+nothing, and the script issues no cleanup of any kind — the entity's lifetime ran out and
+the query stopped matching it. Full write-up, including the Mission 03 transport
+assertion, is in [`arkiv/missions.md`](arkiv/missions.md).
 
 Every line of this repository was written during ETHRome 2026. No pre-existing codebase
 was carried in; the dependencies are the published SDKs listed in `package.json`.
