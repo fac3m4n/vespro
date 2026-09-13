@@ -11,6 +11,7 @@ Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and A
 
 | | |
 |---|---|
+| **Repo** | https://github.com/fac3m4n/vespro |
 | **Live demo** | https://vespro-ten.vercel.app |
 | **Demo video** | _(link)_ |
 | **Mission evidence** | [`arkiv/missions.md`](arkiv/missions.md) — on-chain hashes from the deployed app |
