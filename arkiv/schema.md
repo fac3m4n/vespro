@@ -9,9 +9,52 @@ Two entity types. The split between **attributes** (queryable) and **payload** (
 queryable) is the whole design: anything a buyer filters on has to be an attribute,
 or every browse turns into a scan.
 
+## What deliberately stays off Arkiv
+
 Nothing here contains a fitness measurement. The rows live encrypted on Swarm and
 are never uploaded anywhere else. Arkiv entities are public and verifiable by
 design, so they carry commitments and coarse metadata only.
+
+Specifically kept out of every entity:
+
+- **Measurements.** No heart rate, no sleep interval, no step count. Only `row_count`
+  and a `schema_hash` that commits to column names and order.
+- **The AES-256-GCM dataset key.** It is generated in the seller's browser and never
+  transmitted. The 96-bit IV *is* in the payload, because an IV is not a secret.
+- **Private keys of any kind.** Signing keys live in a gitignored `.env.local`, never
+  under a `NEXT_PUBLIC_` prefix, so they cannot reach the browser bundle.
+- **Anything identifying a person.** No wallet is linked to a name, and no free-text
+  field accepts more than a 500-character dataset description.
+
+## `project` — namespacing, on every entity and every query
+
+Tiramisu is one shared public namespace, so `kind = "listing"` is not a distinctive
+name and an unscoped query reads other projects' rows. Every Vespro entity carries
+`project = "vespro-ethrome-2026-q7f3"`, and every query filters on it — see
+`lib/arkiv/project.ts`.
+
+This scopes; it does not authorise. Anyone holding gas can write that attribute, which
+is why reads additionally pin `$creator` (below).
+
+## Trust: `$creator`, not attributes
+
+Attributes are writable by any funded wallet. An access check written only against
+attributes is therefore satisfied by anyone who writes `kind=grant, buyer=<themselves>`
+— a licence forged for the price of one transaction. `$creator` is fixed at creation and
+cannot be reassigned, so every read in `lib/arkiv/entities.ts` is scoped with
+`.createdBy()` to the wallet that issues entities:
+
+```ts
+await publicClient
+  .select({ key: true })
+  .where(liveGrant(listing_id, buyer))
+  .createdBy(trustedCreator())
+  .limit(1)
+  .fetch()
+```
+
+Reproduce it: run `npm run e2e`, which prints the rendered expression and the creator it
+pins before, during and after the licence window.
 
 ## 1. `listing` — a dataset offered for training
 
@@ -22,6 +65,7 @@ owner stops renewing, the listing drops out of the marketplace on its own.
 
 | Attribute | Type | Why it is an attribute |
 |---|---|---|
+| `project` | string | Scopes every query to this app's rows |
 | `kind` | string, `"listing"` | Separates the two entity types in every query |
 | `domain` | string, e.g. `"fitness"` | First filter a buyer applies |
 | `metric` | string, e.g. `"heart_rate"` | Narrows to a trainable signal |

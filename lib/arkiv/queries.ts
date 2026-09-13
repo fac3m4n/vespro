@@ -1,6 +1,16 @@
 import { and, eq, gte, lte, render } from "@arkiv-network/sdk/query";
 import { addr, i32, str, u64 } from "@arkiv-network/sdk/attr";
 import { KIND_GRANT, KIND_LISTING } from "./schema";
+import { PROJECT_ATTRIBUTE_NAME, PROJECT_ATTRIBUTE_VALUE } from "./project";
+
+/**
+ * Every query starts here. Tiramisu is one shared namespace, so an unscoped query reads
+ * other projects' entities — and `kind = "listing"` is not a distinctive name.
+ *
+ * This scopes; it does not authorise. Any wallet can write this attribute, which is why
+ * the reads in `entities.ts` also pin `$creator`.
+ */
+const inProject = () => eq(PROJECT_ATTRIBUTE_NAME, str(PROJECT_ATTRIBUTE_VALUE));
 
 export type BrowseFilters = {
   domain?: string;
@@ -19,7 +29,7 @@ export type BrowseFilters = {
  * database is doing none of the work you chose it for.
  */
 export function browseListings(filters: BrowseFilters) {
-  const terms = [eq("kind", str(KIND_LISTING))];
+  const terms = [inProject(), eq("kind", str(KIND_LISTING))];
 
   if (filters.domain) terms.push(eq("domain", str(filters.domain)));
   if (filters.metric) terms.push(eq("metric", str(filters.metric)));
@@ -43,6 +53,7 @@ export function browseListings(filters: BrowseFilters) {
  */
 export function liveGrant(listing_id: string, buyer: `0x${string}`) {
   return and(
+    inProject(),
     eq("kind", str(KIND_GRANT)),
     eq("listing_id", str(listing_id)),
     eq("buyer", addr(buyer)),
@@ -51,11 +62,11 @@ export function liveGrant(listing_id: string, buyer: `0x${string}`) {
 
 /** Everything a seller has licensed out, for the live earnings feed. */
 export function grantsForOwner(owner: `0x${string}`) {
-  return and(eq("kind", str(KIND_GRANT)), eq("owner", addr(owner)));
+  return and(inProject(), eq("kind", str(KIND_GRANT)), eq("owner", addr(owner)));
 }
 
 export function listingsForOwner(owner: `0x${string}`) {
-  return and(eq("kind", str(KIND_LISTING)), eq("owner", addr(owner)));
+  return and(inProject(), eq("kind", str(KIND_LISTING)), eq("owner", addr(owner)));
 }
 
 /**

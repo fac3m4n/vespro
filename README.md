@@ -9,9 +9,17 @@ it for a fixed term, and they get model weights back instead of your data.
 
 Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and AI.
 
+**Mission completed: Arkiv Mission 02 — Entity Expiration as the access-control
+mechanism.** Mission 03 — a real websocket subscription rather than a poll wearing one's
+clothes — is delivered alongside it. On-chain evidence for both is in
+[`arkiv/missions.md`](arkiv/missions.md).
+
+Every line of this repository was written during ETHRome 2026. No pre-existing codebase
+was carried in; the dependencies are the published SDKs listed in `package.json`.
+
 | | |
 |---|---|
-| **Repo** | https://github.com/fac3m4n/vespro |
+| **Repo** | https://github.com/fac3m4n/vespro — public, no invitation needed |
 | **Live demo** | https://vespro-ten.vercel.app |
 | **Demo video** | _(link)_ |
 | **Mission evidence** | [`arkiv/missions.md`](arkiv/missions.md) — on-chain hashes from the deployed app |
@@ -33,10 +41,13 @@ Built at [ETHRome 2026](https://ethrome.org/hackermanual). Themes: Privacy and A
    queryable attributes.
 4. A buyer **browses with a compound Arkiv query**. Swarm cannot answer "fitness,
    heart-rate, 500+ rows, under this price, EU"; it only has hashes. Arkiv can.
-5. The buyer **pays on Avalanche Fuji**, and only then is a **grant entity** written
-   whose *lifetime is the licence term*.
+5. The buyer **pays on Avalanche Fuji**, and only then is a **grant entity** issued by
+   the seller's wallet whose *lifetime is the licence term*. The payment is checked to be
+   for this listing, this buyer and this term before the licence exists.
 6. The seller's tab sees the sale over a **websocket subscription**, decrypts locally,
-   trains locally, and patches the resulting weights back into the grant.
+   trains locally, and patches the resulting weights back into the grant. The seller can
+   patch it because the seller owns it — patching is an owner-only operation, which is
+   what decides who issues a grant.
 7. The licence **expires on its own**. The access check is the same query it always
    was, and it returns nothing. No revocation job, no cron, no `delete` call.
 
@@ -79,12 +90,28 @@ kind = "listing" AND domain = "fitness" AND metric = "heart_rate"
   AND row_count >= 500 AND price_per_day_wei <= 5000000000000000
 ```
 
-**Expiry is the product.** A grant is created with `ExpirationTime.fromSeconds(term)`
-and that is the entire licence mechanism. Grep the repo: there is no `deleteEntity`
-call, no `revoked` attribute, and no `expiresAt` column compared against a clock.
-Both expiry patterns are in use — grants **lapse** and absence is the signal, while
-listings **slide** their expiry forward on renewal, so a seller who walks away leaves
-the market without anyone running a cleanup job.
+**Entity Expiration is the product.** A grant is created with
+`ExpirationTime.fromSeconds(term)` and that is the entire licence mechanism. Grep the
+repo: there is no `deleteEntity` call, no `revoked` attribute, and no `expiresAt` column
+compared against a clock. Both expiry patterns are in use — grants **lapse**, and absence
+is the signal, while listings use **Lifetime Extension** to push their expiry forward on
+renewal, so a seller who walks away leaves the market without anyone running a cleanup
+job. Note that a Lifetime Extension *sets* a new expiry measured from now rather than
+adding to the time remaining, and the engine rejects one that would not move the expiry
+later — `renewListing` passes a full lifetime for exactly that reason.
+
+**The term is anchored to the payment, not to the request.** A grant's Entity Expiration
+is measured back from the end of the term recorded on Fuji, so re-presenting a settlement
+transaction produces a licence expiring at the same instant as the first one. That is why
+there is no table of spent transaction hashes anywhere: replay is answered by arithmetic
+rather than by bookkeeping.
+
+**Absence has to mean unpaid, so reads pin the creator.** Arkiv attributes are writable
+by anyone holding gas, which means an access check written only against attributes is
+satisfied by any wallet that writes `kind=grant, buyer=<itself>`. Every read in
+[`lib/arkiv/entities.ts`](lib/arkiv/entities.ts) is therefore scoped with `.createdBy()`
+to the wallet that issues grants; `$creator` is immutable, so it is the one field a
+forger cannot fake.
 
 **A real subscription, asserted.** `lib/useEntityStream.ts` opens
 `watchEntityEvents` over a `webSocket()` transport and never passes `fromBlock`,
@@ -143,9 +170,10 @@ licence, run the access check, wait for the countdown, and run the same check ag
 
 | Path | What |
 |---|---|
+| `lib/arkiv/project.ts` | Project attribute — namespacing in a shared database |
 | `lib/arkiv/schema.ts` | Attributes vs payload, licence terms |
 | `lib/arkiv/queries.ts` | Compound filters, the access check |
-| `lib/arkiv/entities.ts` | Create, extend, patch, read |
+| `lib/arkiv/entities.ts` | Create, extend, patch, read; creator-pinned reads |
 | `lib/useEntityStream.ts` | Websocket subscription, transport assertion |
 | `lib/crypto.ts` | AES-256-GCM, key handling |
 | `lib/swarm.ts` | Swarm ID upload and retrieval |

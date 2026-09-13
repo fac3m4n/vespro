@@ -1,4 +1,12 @@
-import { createPublicClient, createWalletClient, http, parseEventLogs, publicActions } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  keccak256,
+  parseEventLogs,
+  publicActions,
+  toBytes,
+} from "viem";
 import { avalancheFuji } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { LICENCE_ABI } from "@/lib/fujiAbi";
@@ -28,6 +36,14 @@ export type Settlement = {
   paidWei?: string;
   licenceId?: string;
   note?: string;
+  /**
+   * When the paid term ends, in wall-clock ms, taken from the block that settled it.
+   *
+   * The grant's lifetime is derived from this rather than from the moment the licence is
+   * written, which is what stops a settlement transaction from being presented twice for
+   * two full terms. Null when there is no onchain term to anchor to.
+   */
+  termEndsAtMs: number | null;
 };
 
 function client(role: "owner" | "buyer") {
@@ -114,16 +130,27 @@ export async function registerTermsOnFuji(input: {
 }
 
 /**
- * Confirms a client-submitted purchase actually happened, and happened here.
+ * Confirms a client-submitted purchase actually happened, happened here, and bought the
+ * licence that is about to be written.
  *
  * A buyer paying from their own wallet means the server never sees the transaction being
- * made, only a hash afterwards. Three things therefore get checked against the chain:
- * the receipt succeeded, it was sent to our contract, and it emitted LicencePurchased.
- * Without the last two, any successful transaction on Fuji — a plain transfer — would buy
- * a licence for free.
+ * made, only a hash afterwards. Establishing that the receipt succeeded, went to our
+ * contract, and emitted `LicencePurchased` proves *a* purchase — it does not prove it was
+ * *this* purchase, and that gap is exploitable: one cheap sixty-second licence, replayed,
+ * would mint ten-minute grants on any dataset for any address. So the event's own fields
+ * are compared against what the caller is asking for.
+ *
+ * `listingId` is an indexed string, which means the log carries `keccak256(bytes)` rather
+ * than the text, and that hash is what viem hands back to compare against.
+ *
+ * Replay is closed separately, and not by remembering hashes: the returned term end is
+ * read off the settling block, and the grant's lifetime is measured back from it. A
+ * second presentation of the same transaction yields a licence expiring at the same
+ * instant as the first, so there is nothing to gain and no state to keep.
  */
 export async function verifyPurchaseTx(
   txHash: `0x${string}`,
+  expected: { listing_id: string; buyer: `0x${string}`; termSeconds: number },
 ): Promise<{ ok: true; settlement: Settlement } | { ok: false; reason: string }> {
   if (!CONTRACT) return { ok: false, reason: "settlement contract is not configured" };
 
@@ -147,8 +174,38 @@ export async function verifyPurchaseTx(
     logs: receipt.logs,
   });
 
-  const purchase = purchases[0];
-  if (!purchase) return { ok: false, reason: "no LicencePurchased event in that transaction" };
+  const wantedListing = keccak256(toBytes(expected.listing_id));
+  const purchase = purchases.find(
+    (log) =>
+      log.args.listingId === wantedListing &&
+      log.args.buyer.toLowerCase() === expected.buyer.toLowerCase(),
+  );
+
+  if (!purchase) {
+    if (purchases.length === 0) {
+      return { ok: false, reason: "no LicencePurchased event in that transaction" };
+    }
+    return {
+      ok: false,
+      reason: "that payment was for a different listing or a different buyer",
+    };
+  }
+
+  if (Number(purchase.args.termSeconds) !== expected.termSeconds) {
+    return {
+      ok: false,
+      reason: `that payment bought a ${purchase.args.termSeconds}s term, not ${expected.termSeconds}s`,
+    };
+  }
+
+  // Taken from the block rather than the local clock: the term started when the chain
+  // said it did, and the two can differ by more than a short licence lasts.
+  const block = await reader.getBlock({ blockNumber: receipt.blockNumber });
+  const termEndsAtMs = (Number(block.timestamp) + Number(purchase.args.termSeconds)) * 1000;
+
+  if (termEndsAtMs <= Date.now()) {
+    return { ok: false, reason: "the term paid for by that transaction has already elapsed" };
+  }
 
   return {
     ok: true,
@@ -160,6 +217,7 @@ export async function verifyPurchaseTx(
       paidWei: purchase.args.paid.toString(),
       licenceId: purchase.args.licenceId.toString(),
       note: "paid from the buyer's own wallet",
+      termEndsAtMs,
     },
   };
 }
@@ -175,6 +233,9 @@ export async function settleOnFuji(input: {
       chain: "none",
       explorerUrl: null,
       note: "Set NEXT_PUBLIC_LICENCE_CONTRACT_ADDRESS and the Fuji keys to settle.",
+      // No onchain term to anchor to, so the caller falls back to the requested duration
+      // and the response says plainly that nothing was paid.
+      termEndsAtMs: null,
     };
   }
 
@@ -203,11 +264,16 @@ export async function settleOnFuji(input: {
     throw new Error(`Fuji settlement reverted: ${txHash}`);
   }
 
+  // Same anchor as the wallet path, from the same source: the term runs from the block
+  // that recorded the payment, so both routes into a grant measure its lifetime alike.
+  const block = await buyer.getBlock({ blockNumber: receipt.blockNumber });
+
   return {
     settled: true,
     txHash,
     chain: "avalanche-fuji",
     explorerUrl: `https://testnet.snowtrace.io/tx/${txHash}`,
     paidWei: value.toString(),
+    termEndsAtMs: (Number(block.timestamp) + input.seconds) * 1000,
   };
 }

@@ -1,7 +1,13 @@
 import { addr, i32, str, u64 } from "@arkiv-network/sdk/attr";
+import { PROJECT_ATTRIBUTE_NAME, PROJECT_ATTRIBUTE_VALUE } from "./project";
 
 export const KIND_LISTING = "listing";
 export const KIND_GRANT = "grant";
+
+/** The largest value a `u64` attribute can hold, and therefore the highest daily price
+ *  the index can carry. Checked at the API boundary so the failure is a readable 400
+ *  rather than an `InvalidValueError` from inside the SDK. */
+export const MAX_PRICE_PER_DAY_WEI = 2n ** 64n - 1n;
 
 /**
  * Demo lifetimes, in seconds. Arkiv counts lifetimes in blocks at 2s each, so every
@@ -41,6 +47,7 @@ export type ListingInput = {
  */
 export function listingAttributes(input: ListingInput) {
   return {
+    [PROJECT_ATTRIBUTE_NAME]: str(PROJECT_ATTRIBUTE_VALUE),
     kind: str(KIND_LISTING),
     domain: str(input.domain),
     metric: str(input.metric),
@@ -86,6 +93,7 @@ export type GrantInput = {
  */
 export function grantAttributes(input: GrantInput) {
   return {
+    [PROJECT_ATTRIBUTE_NAME]: str(PROJECT_ATTRIBUTE_VALUE),
     kind: str(KIND_GRANT),
     listing_id: str(input.listing_id),
     buyer: addr(input.buyer),

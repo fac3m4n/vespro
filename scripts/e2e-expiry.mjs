@@ -29,20 +29,27 @@ const env = Object.fromEntries(
 
 const LIFETIME_SECONDS = 60;
 
+// Kept in step with lib/arkiv/project.ts. Tiramisu is one shared namespace, so an
+// unscoped query reads other projects' entities.
+const PROJECT = "vespro-ethrome-2026-q7f3";
+
 const read = createPublicClient({
   chain: tiramisu,
   transport: http(env.NEXT_PUBLIC_ARKIV_RPC_HTTP),
 });
 const buyerAccount = privateKeyToAccount(env.ARKIV_BUYER_PRIVATE_KEY);
 const ownerAccount = privateKeyToAccount(env.ARKIV_OWNER_PRIVATE_KEY);
-const buyer = createWalletClient({
+// Grants are issued by the owner wallet, as in the app: only an entity's owner may patch
+// it, and the owner is the party that has to deliver model weights into the grant.
+const owner = createWalletClient({
   chain: tiramisu,
   transport: http(env.NEXT_PUBLIC_ARKIV_RPC_HTTP),
-  account: buyerAccount,
+  account: ownerAccount,
 });
 
 const listing_id = `e2e-${Date.now().toString(36)}`;
 const accessCheck = and(
+  eq("project", str(PROJECT)),
   eq("kind", str("grant")),
   eq("listing_id", str(listing_id)),
   eq("buyer", addr(buyerAccount.address)),
@@ -50,21 +57,35 @@ const accessCheck = and(
 
 console.log(`\nListing:  ${listing_id}`);
 console.log(`Buyer:    ${buyerAccount.address}`);
+console.log(`Issuer:   ${ownerAccount.address}`);
 console.log(`Lifetime: ${LIFETIME_SECONDS}s\n`);
 console.log(`Access check query (identical at every step below):`);
-console.log(`  ${render(accessCheck)}\n`);
+console.log(`  ${render(accessCheck)}`);
+console.log(`  ...createdBy(${ownerAccount.address})\n`);
 
+/**
+ * The same check the app runs. `.createdBy()` is part of it: attributes are writable by
+ * anyone holding gas, so without pinning the immutable creator this query is satisfied by
+ * any wallet that writes `kind=grant, buyer=<itself>` — a licence forged for the price of
+ * a transaction.
+ */
 async function licensed() {
-  const result = await read.select({ key: true }).where(accessCheck).limit(1).fetch();
+  const result = await read
+    .select({ key: true })
+    .where(accessCheck)
+    .createdBy(ownerAccount.address)
+    .limit(1)
+    .fetch();
   return result.entities.length > 0;
 }
 
 console.log(`before purchase          licensed = ${await licensed()}`);
 
-const { entityKey, txHash } = await buyer.createEntity({
+const { entityKey, txHash } = await owner.createEntity({
   payload: jsonToPayload({ listing_id, purchasedSeconds: LIFETIME_SECONDS }),
   contentType: "application/json",
   attributes: {
+    project: str(PROJECT),
     kind: str("grant"),
     listing_id: str(listing_id),
     buyer: addr(buyerAccount.address),

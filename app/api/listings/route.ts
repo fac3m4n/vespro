@@ -2,7 +2,7 @@ import { createListing, fetchListings } from "@/lib/arkiv/entities";
 import { browseListings, explain } from "@/lib/arkiv/queries";
 import type { BrowseFilters } from "@/lib/arkiv/queries";
 import { readTermsOwner, registerTermsOnFuji } from "@/lib/fuji";
-import { LICENCE_SECONDS } from "@/lib/arkiv/schema";
+import { LICENCE_SECONDS, MAX_PRICE_PER_DAY_WEI } from "@/lib/arkiv/schema";
 import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
 const DOMAINS = ["fitness"] as const;
@@ -60,6 +60,29 @@ export async function POST(request: Request) {
     const price_per_day_wei = positiveBigInt(body.price_per_day_wei);
     if (!row_count || price_per_day_wei === undefined) {
       return Response.json({ error: "row_count and price_per_day_wei are required" }, { status: 400 });
+    }
+
+    // The contract pro-rates a daily price by integer division, so a price low enough
+    // that the shortest term rounds to zero would sell that licence for nothing.
+    const shortestTerm = Math.min(...Object.values(LICENCE_SECONDS));
+    if ((price_per_day_wei * BigInt(shortestTerm)) / 86_400n === 0n) {
+      return Response.json(
+        {
+          error:
+            `price_per_day_wei is too low to charge for a ${shortestTerm}s licence — ` +
+            `it pro-rates to 0 wei. Use at least ${86_400n / BigInt(shortestTerm)} wei per day.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Above this the price stops fitting the u64 attribute that makes it range-queryable,
+    // and the SDK would throw from inside createEntity instead of answering the request.
+    if (price_per_day_wei > MAX_PRICE_PER_DAY_WEI) {
+      return Response.json(
+        { error: `price_per_day_wei must be at most ${MAX_PRICE_PER_DAY_WEI}` },
+        { status: 400 },
+      );
     }
 
     const schema_hash = String(body.schema_hash ?? "");
