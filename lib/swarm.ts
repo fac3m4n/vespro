@@ -218,24 +218,19 @@ export async function connectSwarm(): Promise<void> {
 }
 
 /**
- * Restores a Swarm session without user interaction.
+ * Restores a Swarm session without user interaction, and without prompting.
  *
- * `initialize()` already rehydrates a stored session, so in the common case this does
- * nothing and the status simply arrives connected. It only calls `connect()` when this
- * browser has connected before and the session did not come back — and it stays silent
- * about failures, because a popup the browser blocks for lack of a user gesture is an
- * expected outcome here, not an error worth showing.
+ * `initialize()` already rehydrates a stored session, so when there is one the status
+ * simply arrives connected and there is nothing to do here.
+ *
+ * Deliberately does *not* call `connect()` as a fallback. Swarm ID can authenticate with
+ * an Ethereum key, so connect() may ask the injected wallet to sign — which on page load
+ * means an unexplained MetaMask popup on every refresh. Reconnecting is left to the
+ * widget's own button, where the user asked for it.
  */
 export async function restoreSwarm(): Promise<void> {
   const c = await initSwarm();
-  if (c.connectionInfo?.identity || !swarmOptedIn()) return;
-
-  try {
-    await c.connect();
-    publish(c.connectionInfo);
-  } catch {
-    // Left for the explicit button.
-  }
+  publish(c.connectionInfo);
 }
 
 /** Returns the Swarm reference — the content hash that goes in the Arkiv payload. */

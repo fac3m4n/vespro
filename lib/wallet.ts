@@ -202,11 +202,18 @@ function subscribe(injected: EIP1193Provider) {
     else forgetWallet();
   });
 
-  // A full reload is what the wallet docs recommend, and it avoids a long tail of
-  // half-updated state that only shows up when someone switches chains mid-demo.
+  /**
+   * Update state; do not reload.
+   *
+   * This used to call window.location.reload(). Some wallets emit chainChanged as soon as
+   * a listener is registered, which turned every page load into a reload — and each reload
+   * re-ran the connect path, so it looked like the wallet was asking to connect on every
+   * refresh. Nothing here needs a reload: chainId is the only thing that changed, `ready`
+   * is derived from it, and the balance is refetched below.
+   */
   injected.on?.("chainChanged", (chainId) => {
     publish({ chainId: Number(chainId) });
-    window.location.reload();
+    if (state.address) void refreshBalance(state.address);
   });
 }
 
