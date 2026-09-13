@@ -9,7 +9,8 @@
     "lint": "eslint",
     "check": "node scripts/check-network.mjs",
     "e2e": "node scripts/e2e-expiry.mjs",
-    "deploy:fuji": "node scripts/deploy-fuji.mjs"
+    "deploy:fuji": "node scripts/deploy-fuji.mjs",
+    "deploy:web": "node scripts/deploy-vercel.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.1",

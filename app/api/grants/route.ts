@@ -2,6 +2,7 @@ import { createGrant, hasLiveGrant } from "@/lib/arkiv/entities";
 import { explain, liveGrant } from "@/lib/arkiv/queries";
 import { LICENCE_SECONDS, type LicenceOption } from "@/lib/arkiv/schema";
 import { settleOnFuji } from "@/lib/fuji";
+import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
 /**
  * The access check.
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // A purchase is a Fuji transaction plus an Arkiv write.
+  const limit = rateLimit(clientKey(request, "grants"), { limit: 10, windowSeconds: 300 });
+  if (!limit.ok) return tooMany(limit);
+
   try {
     const body = await request.json();
     const option = body.option as LicenceOption;

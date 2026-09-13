@@ -1,4 +1,5 @@
 import { publishTrainingResult } from "@/lib/arkiv/entities";
+import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
 /**
  * The seller returns model weights by patching them into the grant.
@@ -8,6 +9,9 @@ import { publishTrainingResult } from "@/lib/arkiv/entities";
  * on the same channel as the purchase did.
  */
 export async function POST(request: Request) {
+  const limit = rateLimit(clientKey(request, "results"), { limit: 20, windowSeconds: 300 });
+  if (!limit.ok) return tooMany(limit);
+
   try {
     const { entityKey, result } = await request.json();
 

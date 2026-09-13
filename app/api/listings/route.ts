@@ -3,6 +3,7 @@ import { browseListings, explain } from "@/lib/arkiv/queries";
 import type { BrowseFilters } from "@/lib/arkiv/queries";
 import { registerTermsOnFuji } from "@/lib/fuji";
 import { LICENCE_SECONDS } from "@/lib/arkiv/schema";
+import { clientKey, rateLimit, tooMany } from "@/lib/rateLimit";
 
 const DOMAINS = ["fitness"] as const;
 const METRICS = ["heart_rate", "sleep", "steps"] as const;
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Publishing costs two transactions from shared burner wallets.
+  const limit = rateLimit(clientKey(request, "listings"), { limit: 5, windowSeconds: 300 });
+  if (!limit.ok) return tooMany(limit);
+
   try {
     const body = await request.json();
 
